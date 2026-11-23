@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0d11">
+<title>Cinder Vigil &middot; The Ember Swordsman</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main id="game">
+<header>
+  <div class="brand"><span class="ember-mark" aria-hidden="true"><i></i></span><div><h1>Cinder Vigil</h1><small>The Ember Swordsman</small></div></div>
+  <div class="location"><i></i> Ashmere Chapel <i></i></div>
+  <div class="actions"><button id="openGuide" aria-haspopup="dialog">Field guide</button><button id="sound" aria-label="Enable sound" title="Toggle sound (M)" aria-pressed="false">Sound off</button><button id="pause" aria-label="Pause game" title="Pause (Esc)">Ⅱ</button></div>
+</header>
+<section id="view" aria-label="Chapel grounds">
+  <canvas id="world" tabindex="0" aria-label="Playable ASCII chapel courtyard. Move with WASD or arrow keys, dash with Shift, left-click for a slash or double-click for a crossing lunge, and interact with E."></canvas>
+  <div class="objective"><div class="chapter"><span class="diamond"></span><span id="chapter">The night watch</span></div><h2 id="mission">Kindle the watchfires</h2><div class="progress"><span id="seals" aria-hidden="true">◇ ◇ ◇</span><span id="count">0 / 3 lit</span></div></div>
+  <div class="stance"><span id="moveName">On watch</span><div class="dash-meter"><i id="dashFill"></i></div><small id="dashLabel">Dash ready</small></div>
+  <div id="message" role="status"></div><div id="interaction"></div>
+  <div class="vitals"><span>Vitality</span><strong id="health" aria-label="3 vitality">◆ ◆ ◆</strong></div>
+  <div class="map-tag"><span>✧</span> <span id="area">Chapel yard</span></div>
+  <div id="touch"><div class="pad"><button data-move="up" aria-label="Move up">↑</button><button data-move="left" aria-label="Move left">←</button><button data-move="down" aria-label="Move down">↓</button><button data-move="right" aria-label="Move right">→</button></div><div class="touch-actions"><button id="touchDash">Dash</button><button id="touchAttack">Strike</button><button id="touchUse">Use</button></div></div>
+  <div id="overlay" hidden><div class="panel"><div class="ornament" aria-hidden="true">─── ◈ ───</div><h2 id="overlayTitle">Watch paused</h2><p id="overlayCopy"></p><button id="resume">Resume watch</button></div></div>
+</section>
+<footer><div class="keys"><span><kbd>WASD</kbd> Move</span><span><kbd>SHIFT</kbd> Dash</span><span><kbd>LMB</kbd> Slash</span><span><kbd>2&times; LMB</kbd> Crossing lunge</span><span><kbd>E</kbd> Interact</span></div><button id="zoom" title="Cycle view (C) or use the mouse wheel"><kbd>C</kbd> <span>Zoom</span></button></footer>
+</main>
+<dialog id="guide" aria-labelledby="guideTitle">
+  <header class="guide-head"><div><small>Ashmere Chapel</small><h2 id="guideTitle">Field guide</h2></div><button id="closeGuide" autofocus>Return to game <kbd>Esc</kbd></button></header>
+  <div class="guide-layout">
+    <nav id="techniques" aria-label="Recorded gameplay"></nav>
+    <section class="demonstration" aria-label="Selected demonstration">
+      <picture><source id="still" media="(prefers-reduced-motion: reduce)"><img id="demo" alt=""></picture>
+      <div class="demo-info"><small id="demoKey"></small><h3 id="demoName"></h3><p id="demoCopy"></p></div>
+    </section>
+  </div>
+  <details class="reference"><summary>Quest, sound &amp; all controls</summary>
+    <p>Find the three amber diamonds. Kindle each watchfire, drive off the shades, then return to the chapel door and ring the bell. You start with three vitality.</p>
+    <dl><dt>Move</dt><dd>WASD, arrows or touch pad</dd><dt>Slash / crossing lunge</dt><dd>Click / double-click. Space or the touch Strike button also accepts one or two presses.</dd><dt>Dash</dt><dd>Shift or Dash on touch</dd><dt>Use a fire or bell</dt><dd>E or Use on touch</dd><dt>Camera</dt><dd>C, Zoom, mouse wheel or + / &minus;</dd><dt>Music &amp; footsteps</dt><dd>M or the sound button. Footfalls change between stone and grass.</dd><dt>Pause / resume</dt><dd>Esc or the pause button</dd></dl>
+  </details>
+</dialog>
+<audio id="score" src="ashmere.ogg" preload="auto" loop></audio><script src="keeper.js"></script><script src="art.js"></script><script src="guide.js"></script><script src="game.js"></script>
+</body></html>
