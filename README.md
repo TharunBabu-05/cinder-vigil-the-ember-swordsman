@@ -14,6 +14,10 @@ For offline play, download and extract the repository ZIP or clone the repositor
 Start-Process .\index.html
 ```
 
+## AI disclosure
+
+Tharun directed the game’s concept, gameplay and visual style. He used OpenAI Codex to write and iterate on the game and website code, including the renderer that draws the ASCII art from geometry in the browser. The recorded sound effects are credited below.
+
 ## Two ways to use the katana
 
 - **Crescent slash.** Aim at a shade and left-click once. The keeper raises the blade, swings through the target, and returns to guard.

@@ -726,7 +726,11 @@
   }
   const mapping={KeyW:'up',ArrowUp:'up',KeyS:'down',ArrowDown:'down',KeyA:'left',ArrowLeft:'left',KeyD:'right',ArrowRight:'right'};
   const pressed=new Set();
-  function syncKeys(){keys=new Set([...pressed].map(k=>mapping[k]||k));}
+  const movementPointers=new Map();
+  function syncKeys(){
+    keys=new Set([...pressed].map(code=>mapping[code]));
+    for(const button of movementPointers.values())keys.add(button.dataset.move);
+  }
   window.addEventListener('keydown',startSound,true);
   window.addEventListener('pointerdown',startSound,true);
   // Some touch browsers grant audio playback on release of the first touch.
@@ -760,7 +764,12 @@
     }
   });
   window.addEventListener('keyup',e=>{pressed.delete(e.code);syncKeys();});
-  function clearInput(){pressed.clear();keys.clear();lastPress=-Infinity;}
+  function clearInput(){
+    pressed.clear();
+    for(const button of movementPointers.values())button.removeAttribute('data-held');
+    movementPointers.clear();
+    keys.clear();lastPress=-Infinity;
+  }
   window.addEventListener('blur',clearInput);document.addEventListener('visibilitychange',()=>{clearInput();if(document.hidden&&mode==='play'&&initialized)modal('pause');});
   $('resume').onclick=()=>{clearInput();if(mode==='pause')unpause();else reset();};
   $('explore').onclick=()=>{
@@ -777,14 +786,40 @@
     const dx=(e.clientX-rect.left-width*.5)/s+camX-x,dy=(e.clientY-rect.top-height*.5)/s+camY-y;
     strike(Math.atan2(-dx,dy));
   });
-  for(const b of document.querySelectorAll('[data-move]')){
-    const dir=b.dataset.move;
-    b.onpointerdown=e=>{e.preventDefault();if(mode!=='play')return;b.setPointerCapture(e.pointerId);pressed.add(dir);syncKeys();};
-    b.onlostpointercapture=()=>{pressed.delete(dir);syncKeys();};
+  const touchControls=$('touch');
+  touchControls.addEventListener('contextmenu',e=>{if(e.target.closest('button'))e.preventDefault();});
+  function releaseMovementPointer(e){
+    const button=movementPointers.get(e.pointerId);
+    if(!button)return;
+    movementPointers.delete(e.pointerId);
+    if(![...movementPointers.values()].includes(button))button.removeAttribute('data-held');
+    syncKeys();
   }
-  $('touchDash').onclick=dash;
-  $('touchJump').onclick=jump;
-  $('touchAttack').onclick=()=>strike();$('touchUse').onclick=use;
+  for(const button of touchControls.querySelectorAll('[data-move]')){
+    button.addEventListener('pointerdown',e=>{
+      if(mode!=='play'||e.button!==0)return;
+      e.preventDefault();
+      button.setPointerCapture(e.pointerId);
+      movementPointers.set(e.pointerId,button);
+      button.setAttribute('data-held','');
+      syncKeys();
+    });
+    button.addEventListener('pointerup',releaseMovementPointer);
+    button.addEventListener('pointercancel',releaseMovementPointer);
+    button.addEventListener('lostpointercapture',releaseMovementPointer);
+  }
+  const touchActions={touchDash:dash,touchJump:jump,touchAttack:()=>strike(),touchUse:use};
+  for(const [id,action] of Object.entries(touchActions)){
+    const button=$(id);
+    button.addEventListener('click',action);
+    button.addEventListener('touchend',e=>{
+      // Some browsers drop the click from a second finger while movement is held.
+      e.preventDefault();
+      const releasedOnButton=[...e.changedTouches].some(touch=>
+        button.contains(document.elementFromPoint(touch.clientX,touch.clientY)));
+      if(releasedOnButton)action();
+    },{passive:false});
+  }
   let guidePaused=false;
   $('openGuide').onclick=()=>{
     guidePaused=mode==='play';
