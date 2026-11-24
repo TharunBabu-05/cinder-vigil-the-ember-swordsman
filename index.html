@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b0d11">
 <title>Cinder Vigil &middot; The Ember Swordsman</title>
-<link rel="stylesheet" href="style.css?v=touch-controls">
+<link rel="stylesheet" href="style.css?v=thumbstick">
 </head>
 <body>
 <main id="game">
@@ -21,13 +21,21 @@
   <div id="message" role="status"></div><div id="interaction"></div>
   <div class="vitals"><span>Vitality</span><strong id="health" aria-label="3 vitality">◆ ◆ ◆</strong></div>
   <div class="map-tag"><span>✧</span> <span id="area">Lantern court</span></div>
-  <div id="touch"><div class="pad"><button data-move="up" aria-label="Move up">↑</button><button data-move="left" aria-label="Move left">←</button><button data-move="down" aria-label="Move down">↓</button><button data-move="right" aria-label="Move right">→</button></div><div class="touch-actions"><button id="touchJump">Jump</button><button id="touchDash">Dash</button><button id="touchAttack">Strike</button><button id="touchUse">Use</button></div></div>
+  <div id="touch" role="group" aria-label="Touch controls">
+    <div id="thumbstick" role="group" aria-label="Movement thumbstick"><span aria-hidden="true"></span></div>
+    <div class="touch-actions">
+      <button id="touchJump" type="button" aria-label="Jump"><span class="touch-symbol" aria-hidden="true">↑</span><span class="touch-label">Jump</span></button>
+      <button id="touchUse" type="button" aria-label="Use or interact"><span class="touch-symbol" aria-hidden="true">◇</span><span class="touch-label">Use</span></button>
+      <button id="touchAttack" type="button" aria-label="Attack. Double-tap for a crossing lunge"><span class="touch-symbol sword-icon" aria-hidden="true"></span><span class="touch-label">Attack</span></button>
+      <button id="touchDash" type="button" aria-label="Dash"><span class="touch-symbol dash-icon" aria-hidden="true"></span><span class="touch-label">Dash</span></button>
+    </div>
+  </div>
   <div id="overlay" hidden><div class="panel"><div class="ornament" aria-hidden="true">─── ◈ ───</div><h2 id="overlayTitle">Watch paused</h2><p id="overlayCopy"></p><button id="explore" hidden>Keep exploring</button> <button id="resume">Resume watch</button></div></div>
 </section>
 <footer>
   <div class="keys"><span><kbd>WASD</kbd> Move</span><span><kbd>J</kbd> Jump</span><span><kbd>SHIFT</kbd> Dash</span><span><kbd>2&times; LMB</kbd> Crossing lunge</span><span><kbd>LMB</kbd> Slash</span><span><kbd>E</kbd> Interact</span></div>
   <div class="footer-tools">
-    <button id="zoom" title="Cycle view (C) or use the mouse wheel"><kbd>C</kbd> <span>Zoom</span></button>
+    <button id="zoom" aria-label="Zoom" title="Cycle view (C) or use the mouse wheel"><kbd>C</kbd> <span>Zoom</span></button>
     <div id="player-badge" class="player-badge" hidden>
       <span>Players</span>
       <strong id="player-total" aria-label="Loading player total">&ndash;</strong>
@@ -65,12 +73,12 @@
   </details>
   <details class="reference"><summary>Sound &amp; all controls</summary>
     <p>Press J or tap Jump while moving to vault the low courtyard rails or cross missing boards. G opens the river atlas. At the survey desk west of the gatehouse court, read Nao’s unfinished chart to start her survey.</p>
-    <dl><dt>Move</dt><dd>WASD, arrows or touch pad</dd><dt>Slash / crossing lunge</dt><dd>Click / double-click. Space or the touch Strike button also accepts one or two presses.</dd><dt>Dash</dt><dd>Shift or Dash on touch</dd><dt>Use a landmark or item</dt><dd>E or Use on touch</dd><dt>Camera</dt><dd>C, Zoom, mouse wheel or + / &minus;</dd><dt>Music &amp; footsteps</dt><dd>M or the sound button. Recorded footsteps change between paving and earth. Blade swishes and the dash share this switch.</dd><dt>Pause / resume</dt><dd>Esc or the pause button</dd></dl>
+    <dl><dt>Move</dt><dd>WASD, arrows or the touch thumbstick. Push the stick farther from its center to move faster.</dd><dt>Slash / crossing lunge</dt><dd>Click or double-click. Space or the sword button on touch also accepts one or two presses.</dd><dt>Dash</dt><dd>Shift or the double-chevron button on touch</dd><dt>Use a landmark or item</dt><dd>E or the diamond button on touch</dd><dt>Camera</dt><dd>C, Zoom, mouse wheel or + / &minus;</dd><dt>Music &amp; footsteps</dt><dd>M or the sound button. Recorded footsteps change between paving and earth. Blade swishes and the dash share this switch.</dd><dt>Pause / resume</dt><dd>Esc or the pause button</dd></dl>
   </details>
 </dialog>
 <audio id="score" src="ashmere.ogg" preload="auto" loop></audio>
 <script src="keeper.js?v=river-atlas"></script><script src="art.js?v=river-atlas"></script>
 <script src="reach.js?v=river-atlas"></script><script src="survey.js"></script>
 <script src="shades.js?v=river-atlas"></script><script src="guide.js?v=river-atlas"></script>
-<script src="players.js"></script><script src="game.js?v=touch-controls"></script>
+<script src="players.js"></script><script src="game.js?v=thumbstick"></script>
 </body></html>

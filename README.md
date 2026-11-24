@@ -39,17 +39,19 @@ These GIFs were captured from the playable game. Open **Field guide** in the hea
 
 | Action | Desktop | Touch |
 | --- | --- | --- |
-| Walk | WASD or arrow keys | Direction pad |
-| Jump | J, with a movement direction to carry the jump | Hold the pad and tap Jump |
+| Walk | WASD or arrow keys | Drag the thumbstick. Push farther to move faster. |
+| Jump | J, with a movement direction to carry the jump | Hold the thumbstick and tap the up-arrow button |
 | Open the river atlas | G or Atlas | Atlas |
-| Crescent slash | Left-click to aim, or Space to strike in the facing direction | Tap Strike |
-| Crossing lunge | Double-click, or press Space twice | Double-tap Strike |
-| Dash | Shift with a direction, or Shift to dash forward | Dash with the pad, or Dash alone |
-| Use a fire, landmark or quest item | E near the target | Use |
+| Crescent slash | Left-click to aim, or Space to strike in the facing direction | Tap the sword button |
+| Crossing lunge | Double-click, or press Space twice | Double-tap the sword button |
+| Dash | Shift with a direction, or Shift to dash forward | Tap the double-chevron button. The stick sets the direction. |
+| Use a fire, landmark or quest item | E near the target | Tap the diamond button |
 | Camera | C to cycle, mouse wheel or + / − to fine-tune | Zoom |
 | Music and sound | M or the sound button | Sound button |
 | Pause and resume | Esc or the pause button | Pause / Resume |
 | Browse recorded moves | Field guide | Field guide |
+
+Turn your phone sideways for a compact HUD. The landscape view keeps the objective, compass bearing and vitality visible, with icon controls in the corners.
 
 ## The night watch
 

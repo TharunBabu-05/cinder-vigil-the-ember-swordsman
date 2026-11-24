@@ -3,6 +3,7 @@
   const $=id=>document.getElementById(id),world=$('world'),ctx=world.getContext('2d',{alpha:false}),view=$('view');
   const {project}=Art,rand=Art.random(782),tau=Math.PI*2;
   const coarsePointer=matchMedia('(pointer:coarse)');
+  const landscape=matchMedia('(orientation:landscape)');
   const ground=Art.ground(),gatehouse=Art.gatehouse(),meadow=Art.meadow(),bowl=Art.brazier();
   const trees=[Art.tree(55,112),Art.tree(22,88),Art.tree(87,158)],stones=[1,2,3].map(Art.stone);
   const props=[],obstacles=[],rails=[],flames=[
@@ -56,7 +57,7 @@
   Survey.scenery(post,obstacles,trees,stones);
   const motes=Array.from({length:65},()=>({x:rand()*1260-610,y:rand()*530-130,z:rand()*48,phase:rand()*tau}));
   let width=0,height=0,dpr=1,fit=1,mode='play',muted=true,audio=null,t=0,last=0,elapsed=0;
-  let player,keys=new Set(),wisps=[],sparks=[],paths=[],zoom=1,wantedZoom=1,camX=0,camY=0,shake=0,active=null;
+  let player,wisps=[],sparks=[],paths=[],zoom=1,wantedZoom=1,camX=0,camY=0,shake=0,active=null;
   const duration={slash:.65,counter:.86};
   let swordTrail=[],lastPress=-Infinity;
   let intro=true,echoes=[],nextEcho=0,soundChosen=false;
@@ -85,7 +86,7 @@
     player={x:spawn?spawn.x:5,y:spawn?spawn.y+32:101,angle:-.65,walk:0,moving:false,hp:letter===2?4:3,attack:0,cooldown:0,form:"slash",queued:false,stepCount:0,invuln:0,dashTime:0,dashCooldown:0,dashX:0,dashY:0,pose:0,cloth:Keeper.motion(),
       z:0,airTime:0,jumpCooldown:0,safeX:0,safeY:0};
     for(const f of flames)f.lit=checkpoint;
-    wisps=[];bolts=[];sparks=[];paths=[];keys.clear();elapsed=0;arrival=0;mode='play';shake=0;active=null;noticeTime=0;
+    wisps=[];bolts=[];sparks=[];paths=[];clearInput();elapsed=0;arrival=0;mode='play';shake=0;active=null;noticeTime=0;
     view.classList.remove('homecoming');
     for(const [kind,x,y] of [...Reach.patrols,...Survey.patrols])spawnShade(kind,x,y,true);
     swordTrail=[];lastPress=-Infinity;echoes=[];nextEcho=0;intro=true;syncMusic();wantedZoom=zoom=1;const [x,y]=project(player.x,player.y);camX=x+30;camY=y-117;
@@ -184,7 +185,7 @@
   function startSound(e){
     if($('guide').open||$('atlas').open||e.target.closest?.('#openGuide,#openAtlas'))return;
     if(soundChosen||e.target.closest?.('#sound')||e.code==='KeyM')return;
-    if(e.type==='keydown'&&!mapping[e.code]&&!['Space','KeyE','KeyJ','KeyC','ShiftLeft','ShiftRight'].includes(e.code))return;
+    if(e.type==='keydown'&&!movementCodes.has(e.code)&&!['Space','KeyE','KeyJ','KeyC','ShiftLeft','ShiftRight'].includes(e.code))return;
     toggleSound();
   }
   function modal(state){
@@ -326,7 +327,7 @@
   function dash(){
     if(mode!=='play'||player.dashCooldown>0||player.airTime>0)return;
     window.playerCount?.recordPlay();
-    const dx=Number(keys.has('right'))-Number(keys.has('left')),dy=Number(keys.has('down'))-Number(keys.has('up'));
+    const [dx,dy]=movementDirection();
     const length=Math.hypot(dx,dy);
     player.dashX=length?dx/length:-Math.sin(player.angle);
     player.dashY=length?dy/length:Math.cos(player.angle);
@@ -428,7 +429,8 @@
       if(combo?(phase>.15&&phase<.47):(phase>.30&&phase<.52))
         move(-Math.sin(player.angle),Math.cos(player.angle),dt,combo?152:82);
     }else{
-      move(Number(keys.has('right'))-Number(keys.has('left')),Number(keys.has('down'))-Number(keys.has('up')),dt);
+      const [dx,dy]=movementDirection();
+      move(dx,dy,dt,94*Math.min(1,Math.hypot(dx,dy)));
     }
     player.pose+=(Number(player.dashTime>0)-player.pose)*(1-Math.exp(-dt*14));
     const p=project(player.x,player.y),vx=dt?(p[0]-before[0])/dt:0,vd=dt?(p[1]-before[1])/(dt*.74):0;
@@ -489,13 +491,16 @@
     const action=player.airTime>0?'Jumping':player.attack>0?(player.form==='counter'?'Crossing lunge':player.queued?'Follow-up queued':'Crescent slash'):player.dashTime>0?'Shadow step':player.moving?'Walking':'On watch';
     if($('moveName').textContent!==action)$('moveName').textContent=action;
     $('dashFill').style.transform='scaleX('+Math.min(1,1-player.dashCooldown/.85)+')';
-    const dashStatus=player.dashCooldown>0?'Recovering':'Dash ready';
+    const recovering=player.dashCooldown>0;
+    const dashStatus=recovering?'Recovering':'Dash ready';
     if($('dashLabel').textContent!==dashStatus)$('dashLabel').textContent=dashStatus;
+    touchDash.toggleAttribute('data-recovering',recovering);
     active=player.airTime>0?null:nearTarget();
-    let prompt=active&&!(stage===3&&active===Reach.beacon)?(coarsePointer.matches?'[ Use ]  ':'[ E ]  ')+actionFor(active):'';
+    const touch=coarsePointer.matches;
+    let prompt=active&&!(stage===3&&active===Reach.beacon)?(touch?'◇  ':'[ E ]  ')+actionFor(active):'';
     const fenDx=Math.abs(player.x-Survey.fen.x),fenDy=Math.abs(player.y-Survey.fen.y);
     if(!prompt&&!player.airTime&&fenDx<87&&fenDy<80&&(fenDx>48||fenDy>38)){
-      prompt=(coarsePointer.matches?'[ Jump ]':'[ J ]')+'  Jump the reed cut';
+      prompt=(touch?'↑':'[ J ]')+'  Jump the reed cut';
     }
     if($('interaction').textContent!==prompt)$('interaction').textContent=prompt;
     const bank=Art.riverY(player.x);
@@ -724,12 +729,15 @@
     ctx.setTransform(dpr,0,0,dpr,0,0);
     if(t<flashUntil&&mode==='play'){ctx.fillStyle='rgba(165,72,51,.12)';ctx.fillRect(0,0,width,height);}
   }
-  const mapping={KeyW:'up',ArrowUp:'up',KeyS:'down',ArrowDown:'down',KeyA:'left',ArrowLeft:'left',KeyD:'right',ArrowRight:'right'};
-  const pressed=new Set();
-  const movementPointers=new Map();
-  function syncKeys(){
-    keys=new Set([...pressed].map(code=>mapping[code]));
-    for(const button of movementPointers.values())keys.add(button.dataset.move);
+  const moveKeys={up:['KeyW','ArrowUp'],down:['KeyS','ArrowDown'],left:['KeyA','ArrowLeft'],right:['KeyD','ArrowRight']};
+  const movementCodes=new Set(Object.values(moveKeys).flat());
+  const pressed=new Set(),thumbstick=$('thumbstick'),touchDash=$('touchDash');
+  let stickPointer=null,stickX=0,stickY=0;
+  function movementDirection(){
+    if(!pressed.size)return [stickX,stickY];
+    const held=dir=>Number(moveKeys[dir].some(code=>pressed.has(code)));
+    const dx=held('right')-held('left'),dy=held('down')-held('up');
+    return dx||dy?[dx,dy]:[stickX,stickY];
   }
   window.addEventListener('keydown',startSound,true);
   window.addEventListener('pointerdown',startSound,true);
@@ -755,7 +763,7 @@
     if(mode!=='play')return;
     if(e.code==='KeyJ'){e.preventDefault();if(!e.repeat)jump();return;}
     if(e.code==='ShiftLeft'||e.code==='ShiftRight'){e.preventDefault();if(!e.repeat)dash();return;}
-    if(mapping[e.code]){e.preventDefault();pressed.add(e.code);syncKeys();return;}
+    if(movementCodes.has(e.code)){e.preventDefault();pressed.add(e.code);return;}
     if(['Space','KeyE','KeyC','KeyM','Equal','Minus'].includes(e.code)){
       if(e.code==='Space'&&document.activeElement?.tagName==='BUTTON')return;
       e.preventDefault();if(e.repeat)return;
@@ -763,12 +771,9 @@
       else {intro=false;wantedZoom=Math.max(.8,Math.min(8.5,wantedZoom*(e.code==='Equal'?1.3:1/1.3)));}
     }
   });
-  window.addEventListener('keyup',e=>{pressed.delete(e.code);syncKeys();});
+  window.addEventListener('keyup',e=>pressed.delete(e.code));
   function clearInput(){
-    pressed.clear();
-    for(const button of movementPointers.values())button.removeAttribute('data-held');
-    movementPointers.clear();
-    keys.clear();lastPress=-Infinity;
+    pressed.clear();releaseStick();lastPress=-Infinity;
   }
   window.addEventListener('blur',clearInput);document.addEventListener('visibilitychange',()=>{clearInput();if(document.hidden&&mode==='play'&&initialized)modal('pause');});
   $('resume').onclick=()=>{clearInput();if(mode==='pause')unpause();else reset();};
@@ -787,28 +792,46 @@
     strike(Math.atan2(-dx,dy));
   });
   const touchControls=$('touch');
-  touchControls.addEventListener('contextmenu',e=>{if(e.target.closest('button'))e.preventDefault();});
-  function releaseMovementPointer(e){
-    const button=movementPointers.get(e.pointerId);
-    if(!button)return;
-    movementPointers.delete(e.pointerId);
-    if(![...movementPointers.values()].includes(button))button.removeAttribute('data-held');
-    syncKeys();
+  touchControls.addEventListener('contextmenu',e=>{if(e.target.closest('button,#thumbstick'))e.preventDefault();});
+  function releaseStick(){
+    const pointer=stickPointer;
+    stickPointer=null;stickX=0;stickY=0;
+    thumbstick.removeAttribute('data-held');
+    thumbstick.style.removeProperty('--stick-x');
+    thumbstick.style.removeProperty('--stick-y');
+    if(pointer!==null&&thumbstick.hasPointerCapture(pointer))thumbstick.releasePointerCapture(pointer);
   }
-  for(const button of touchControls.querySelectorAll('[data-move]')){
-    button.addEventListener('pointerdown',e=>{
-      if(mode!=='play'||e.button!==0)return;
-      e.preventDefault();
-      button.setPointerCapture(e.pointerId);
-      movementPointers.set(e.pointerId,button);
-      button.setAttribute('data-held','');
-      syncKeys();
-    });
-    button.addEventListener('pointerup',releaseMovementPointer);
-    button.addEventListener('pointercancel',releaseMovementPointer);
-    button.addEventListener('lostpointercapture',releaseMovementPointer);
+  function steerStick(e){
+    if(e.pointerId!==stickPointer)return;
+    const {left,top,width,height}=thumbstick.getBoundingClientRect();
+    if(!width){releaseStick();return;}
+    const x=e.clientX-left-width/2,y=e.clientY-top-height/2;
+    const distance=Math.hypot(x,y),travel=width*.29;
+    const unitX=distance?x/distance:0,unitY=distance?y/distance:0;
+    const throwDistance=Math.min(distance,travel),deadZone=travel*.14;
+    const strength=Math.max(0,throwDistance-deadZone)/(travel-deadZone);
+    stickX=unitX*strength;stickY=unitY*strength;
+    thumbstick.style.setProperty('--stick-x',unitX*throwDistance+'px');
+    thumbstick.style.setProperty('--stick-y',unitY*throwDistance+'px');
   }
-  const touchActions={touchDash:dash,touchJump:jump,touchAttack:()=>strike(),touchUse:use};
+  thumbstick.addEventListener('pointerdown',e=>{
+    if(mode!=='play'||e.button!==0||stickPointer!==null)return;
+    e.preventDefault();
+    thumbstick.setPointerCapture(e.pointerId);stickPointer=e.pointerId;
+    thumbstick.setAttribute('data-held','');steerStick(e);
+  });
+  thumbstick.addEventListener('pointermove',steerStick);
+  for(const type of ['pointerup','pointercancel','lostpointercapture']){
+    thumbstick.addEventListener(type,e=>{if(e.pointerId===stickPointer)releaseStick();});
+  }
+  for(const layout of [coarsePointer,landscape])layout.addEventListener('change',releaseStick);
+  const touchActions={
+    touchDash:dash,touchJump:jump,touchUse:use,
+    touchAttack:()=>{
+      const [dx,dy]=movementDirection();
+      strike(dx||dy?Math.atan2(-dx,dy):undefined);
+    }
+  };
   for(const [id,action] of Object.entries(touchActions)){
     const button=$(id);
     button.addEventListener('click',action);
