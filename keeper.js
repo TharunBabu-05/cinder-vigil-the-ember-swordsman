@@ -111,7 +111,7 @@ const Keeper = (() => {
     return {guard:projected(3.1,0),tip:projected(5.1+bladeLength,bladeCurve+1.03)};
   }
   let lastTime=-1,lastChain=null;
-  function draw(angle,stride,swing,time,chain,dash,walking,kind){
+  function draw(angle,stride,swing,time,chain,dash,walking,kind,lift=0){
     if(chain===lastChain&&time>=lastTime&&time-lastTime<1/34)return sprite;
     lastTime=time;lastChain=chain;depth.fill(-Infinity);
     const [bladeYaw,elevation,turn,extend]=bladePose(kind,swing);
@@ -123,6 +123,10 @@ const Keeper = (() => {
       stitches.push({p,tangent,letter,tint,size});
     }
     function point(s,f,z,l,u,v,windX=0,windD=0){
+      if(lift){
+        const tuck=Math.max(0,1-z/25)*lift;
+        f+=tuck*(s<0?6:-4);z+=tuck*(s<0?8:5);
+      }
       f+=dash*(z/54)*16;z-=dash*(z/54)*10;
       // Feet plant while the upper body carries the cut across the hips.
       if(extend && z<25){
@@ -160,8 +164,8 @@ const Keeper = (() => {
         const fold=cos(a*8+.7*sin(q*5)+.5*gait*q+q*.8*Math.sin(time*2.2));
         const taper=1.1*Math.sin(q*Math.PI),width=5.8+q*3.2+taper+fold*q*.78;
         const w=breeze(q*q),flap=q*q*(1.2*sin(a*3-time*3)+.8*gait);
-        const lift=Math.min(8,Math.hypot(...w)*.37)*q*q;
-        const z=28-22*q+flap+lift+q*q*Math.cos(a*2)*.9;
+        const hemLift=(Math.min(8,Math.hypot(...w)*.37)+lift*3.8)*q*q;
+        const z=28-22*q+flap+hemLift+q*q*Math.cos(a*2)*.9;
         const border=q>.88?.17*Math.cos((q-.88)*95):0;
         const wrap=sin(q*42+1.25*cos(a-.6)+q*1.45*fold);
         const ridge=Math.max(0,wrap)**3,crease=Math.max(0,-wrap)**2;

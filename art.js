@@ -28,6 +28,10 @@ const Art = (() => {
   }
   function glyphSprite(bounds,cell,paint,kind='stone') {
     const [left,top,w,h]=bounds;
+    return {left,top,w,h,build:()=>typeset(bounds,cell,paint,kind)};
+  }
+  function typeset(bounds,cell,paint,kind) {
+    const [left,top,w,h]=bounds;
     const scale=2/cell;
     const src=canvas(w*scale,h*scale),c=src.getContext('2d',{willReadFrequently:true});
     c.setTransform(scale,0,0,scale,-left*scale,-top*scale);paint(c);
@@ -95,6 +99,11 @@ const Art = (() => {
   }
   function draw(c,s,x=0,y=0){
     const transform=c.getTransform(),pixelWidth=s.w*transform.a;
+    if(s.build){
+      const px=(x+s.left)*transform.a+transform.e,py=(y+s.top)*transform.d+transform.f;
+      if(px>c.canvas.width||py>c.canvas.height||px+pixelWidth<0||py+s.h*transform.d<0)return;
+      Object.assign(s,s.build());delete s.build;
+    }
     if(s.tiles && pixelWidth/s.cols>8){
       const ox=x+s.left,oy=y+s.top,cw=s.w/s.cols,ch=s.h/s.rows;
       const col0=Math.max(0,Math.floor((-transform.e/transform.a-ox)/(16*cw))*16);
@@ -118,7 +127,7 @@ const Art = (() => {
     }
     pts.push([x+width/2,y,base]);face(c,pts,fill);
   }
-  const doorX=0,bridgeXs=[-455,355,1120],riverY=x=>410+24*Math.sin(x/248);
+  const doorX=0,bridgeXs=[-1460,-455,355,1120],riverY=x=>410+24*Math.sin(x/248);
   function gatehouse(){
     return glyphSprite([-287,-382,665,470],1.32,c=>{
       const timber='#9c4a35',red='#b96243',dark='#49302e',gold='#d1a369';
@@ -442,5 +451,112 @@ const Art = (() => {
       }
     },'ground');
   }
-  return {project,draw,ground,gatehouse,meadow,riverSection,riverY,bridgeXs,bridge,stall,kiln,tree,fence,stone,brazier,wreck,ferry,sluice,beacon,waysideShrine,mailbag,reeds,saltPan,dockBoards,spillway,beaconCourt,pilgrim:Keeper.draw,random,doorX};
+  function paperMill(){
+    return glyphSprite([-88,-131,193,165],1.15,c=>{
+      box(c,-62,-31,0,94,53,9,'#817a68','#505954','#9d977c');
+      box(c,-58,-31,9,86,45,44,'#a9926c','#6b6357','#b9aa8b');
+      for(const x of [-55,-29,-2,24])box(c,x,13,9,4,3,45,'#66493d','#463a35','#c7ab86');
+      for(let i=0;i<15;i++){
+        const x=-68+i*7;
+        face(c,[[x,-14,80],[x+7,-14,80],[x+7,26,53],[x,26,53]],i%3?'#697775':'#8b8777');
+        edge(c,[x,-14,81],[x,26,54],'#a6a38a',1.2);
+      }
+      face(c,[[37,26,53],[37,-14,80],[37,-41,54]],'#856e55');
+      for(const x of [-42,-17,8]){
+        edge(c,[x,23,47],[x+16,23,47],'#d6b88b',2);
+        face(c,[[x,23,45],[x+14,23,45],[x+14,24,23],[x+3,24,26]],'#cbc2a1');
+        edge(c,[x+4,24,34],[x+10,24,35],'#9f9985',1.1);
+      }
+      const [x,y]=project(45,13,29);
+      for(let i=0;i<16;i++){
+        const a=i*Math.PI/8,b=a+Math.PI/8,pt=t=>[x+22*Math.cos(t),y+27*Math.sin(t)];
+        line(c,[x,y],pt(a),'#c09766',2);line(c,pt(a),pt(b),'#947453',4);
+        const p=pt(a);line(c,p,[p[0]+6,p[1]-2],'#dbb384',3);
+      }
+      oval(c,x,y,4,4,'#ddba80');
+    });
+  }
+  function floodpole(){
+    return glyphSprite([-32,-96,76,113],.94,c=>{
+      for(const x of [-18,10])box(c,x,-8,0,7,20,8,'#776c55','#4d5048','#b7a486');
+      box(c,-4,-4,5,8,8,72,'#c2af83','#716654','#e3d0a4');
+      for(let z=11;z<77;z+=4)edge(c,[-4,4,z],[z%3?0:4,4,z],'#5d4841',1.7);
+      for(const [z,col] of [[26,'#a94f42'],[48,'#677c95'],[61,'#ac7150']]){
+        edge(c,[-7,4,z],[12,4,z],col,3);
+        face(c,[[8,4,z],[21,5,z-2],[15,5,z-6],[8,4,z-4]],col);
+      }
+      edge(c,[0,0,76],[0,0,84],'#ceb587',2);
+      for(const x of [-16,13])edge(c,[0,0,47],[x,8,8],'#9c946d',1.2);
+    });
+  }
+  function starHouse(){
+    return glyphSprite([-84,-153,181,190],1.1,c=>{
+      for(let i=0;i<3;i++)box(c,-42+i*5,-28+i*3,i*5,84-i*10,55-i*6,5,'#777b7c','#545963','#a2a298');
+      box(c,-27,-20,15,54,35,31,'#8c8581','#625f68','#b9a58d');
+      for(let x=-22;x<26;x+=10)edge(c,[x,16,17],[x,16,42],'#645e65',2);
+      const [x,y]=project(0,0,78);
+      for(let i=0;i<64;i++){
+        const a=i*Math.PI/32,b=(i+1)*Math.PI/32;
+        for(const [rx,ry,tilt,col] of [[35,32,0,'#c8a879'],[36,10,-.57,'#ead095'],[13,32,.42,'#ad9479']]){
+          const rim=t=>[x+rx*Math.cos(t)*Math.cos(tilt)-ry*Math.sin(t)*Math.sin(tilt),y+rx*Math.cos(t)*Math.sin(tilt)+ry*Math.sin(t)*Math.cos(tilt)];
+          line(c,rim(a),rim(b),col,2.4);
+          if(i%4===0){const p=rim(a);line(c,p,[x+(p[0]-x)*.91,y+(p[1]-y)*.91],col,1.4);}
+        }
+      }
+      for(const side of [-1,1])line(c,[x+side*21,y+26],[x+side*12,y+39],'#b49c75',3);
+      line(c,[x-29,y+33],[x+35,y-39],'#efc48b',2);oval(c,x,y,3,3,'#ffe3b3');
+    });
+  }
+  function surveyDesk(){
+    return glyphSprite([-40,-55,84,76],1,c=>{
+      for(const x of [-19,15])for(const y of [-10,9])box(c,x,y,0,3,3,18,'#806249','#534a40','#b0a381');
+      box(c,-22,-13,18,44,28,3,'#927559','#5a534b','#b19c78');
+      face(c,[[-16,-10,21],[11,-10,21],[11,10,21],[-16,10,21]],'#d5cba9');
+      for(let i=0;i<8;i++)edge(c,[-14+i*3,-6+Math.sin(i)*4,21.5],[-11+i*3,-6+Math.sin(i+1)*4,21.5],'#556e77',1.4);
+      box(c,12,4,21,5,5,9,'#d3a161','#947d57','#f7d89f');
+    });
+  }
+  function marshPool(){
+    return glyphSprite([-124,-71,248,143],1.8,c=>{
+      const rng=random(521),outerX=69,outerY=59,innerX=48,innerY=38;
+      face(c,[[-outerX,-outerY,0],[outerX,-outerY,0],[outerX,outerY,0],[-outerX,outerY,0]],'#344e51');
+      for(let i=0;i<920;i++){
+        const x=(rng()-.5)*134,y=(rng()-.5)*114;
+        edge(c,[x,y,0],[x+2+rng()*4,y,0],i%6?'#597478':'#b8c1aa',1);
+      }
+      box(c,-innerX,-innerY,0,innerX*2,innerY*2,2,'#736f55','#59614e','#697358');
+      for(let i=0;i<490;i++){
+        const x=(rng()-.5)*92,y=(rng()-.5)*71;
+        edge(c,[x,y,2],[x+1,y,3+rng()*3],i%4?'#939b73':'#c3b28b',1);
+      }
+      for(const y of [-76,-70,-64,-34,-28,-22])box(c,-12,y,0,24,5.4,3,'#816e55','#535249','#b39970');
+    },'ground');
+  }
+  function uplandGround(wet){
+    const rng=random(wet?1591:2073);
+    return glyphSprite([-82,-50,164,100],2,c=>{
+      for(let i=0;i<320;i++){
+        const a=rng()*Math.PI*2,r=Math.sqrt(rng()),x=Math.cos(a)*r*70,y=Math.sin(a)*r*40;
+        if(wet){
+          if(i%3===0)oval(c,x,y,3+rng()*7,1+rng()*2,'#465f59',-.1);
+          for(let j=0;j<4;j++)line(c,[x+j,y],[x+j-2+rng()*4,y-3-rng()*7],j%2?'#7a825b':'#8b926e',1.3);
+        }else{
+          const w=2+rng()*9,h=1+rng()*2;
+          poly(c,[[x-w,y],[x-w*.24,y-h],[x+w,y-2],[x+w*.2,y+h]],i%3?'#6c6b68':'#83807a');
+          if(i%4===0)line(c,[x-w,y],[x+w*.3,y-1.2],'#a7a398',1);
+        }
+      }
+    },'ground');
+  }
+  function millRace(){
+    return glyphSprite([-44,-4,59,49],1.45,c=>{
+      box(c,0,0,0,13,52,1,'#777663','#505c55','#365153');
+      for(let i=0;i<50;i++){
+        const x=1+noise(i,3)*10,y=noise(i,6)*47;
+        edge(c,[x,y,1],[x+1,y+4,1],i%4?'#60807e':'#a6b9aa',1);
+      }
+      for(const x of [0,13])edge(c,[x,0,2],[x,52,2],'#a29a7b',1.6);
+    },'ground');
+  }
+  return {project,draw,ground,gatehouse,meadow,riverSection,riverY,bridgeXs,bridge,stall,kiln,tree,fence,stone,brazier,wreck,ferry,sluice,beacon,waysideShrine,mailbag,reeds,saltPan,dockBoards,spillway,beaconCourt,paperMill,floodpole,starHouse,surveyDesk,marshPool,uplandGround,millRace,pilgrim:Keeper.draw,random,doorX};
 })();

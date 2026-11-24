@@ -24,3 +24,23 @@
 @media(max-width:500px){footer .keys span:nth-child(n+3){display:none}}
 @media(max-width:370px){footer .keys span:nth-child(2){display:none}}
 @media(pointer:coarse){footer .keys{display:none}}
+#atlas{padding:0;width:min(810px,94vw);max-height:90dvh;overflow:auto;color:var(--cream);background:#13191a;border:1px solid #665842;border-radius:5px}
+#atlas::backdrop{background:#07090bdb}
+#openAtlas,#closeAtlas,.atlas-actions button{border:1px solid #665842;border-radius:3px;padding:7px 11px;color:#ead3ae;font-size:12px}
+.atlas-body{padding:14px clamp(14px,3vw,26px) 22px}
+.atlas-legend,.atlas-actions,.atlas-index{display:flex;align-items:center;gap:15px}
+.atlas-legend{flex-wrap:wrap;gap:6px 15px;margin-bottom:9px;color:#c0c5b9;font-size:11px}
+.atlas-legend i{display:inline-block;border-radius:50%;width:6px;height:6px;background:#b5f1ec;margin-right:4px}
+.atlas-legend span:nth-child(2) i{background:#edaf70}.atlas-legend span:nth-child(3) i{background:#dfb980}
+#chart{display:block;width:100%;height:auto;border:1px solid #43504a}
+.atlas-index{justify-content:space-between;margin:14px 0 8px}
+.atlas-body h3{margin:0;font:normal 21px Georgia,serif}.atlas-index small,.atlas-actions small{color:#beac8f;font-size:11px}
+#stations{display:flex;gap:5px;flex-wrap:wrap}
+#stations button{padding:6px 8px;border:1px solid #46534c;border-radius:2px;color:#c7cec1;font-size:12px}
+#stations button[aria-pressed=true]{border-color:#bb9766;background:#302c24;color:#f3d8ab}
+.atlas-entry{margin:16px 0 12px}.atlas-entry p{min-height:2.7em;margin:5px 0;font:14px/1.5 system-ui,sans-serif;color:#d1cdbf}
+.atlas-actions{flex-wrap:wrap;gap:8px}.atlas-actions button{background:#282b24}
+.wayside-notes{border-top:1px solid #46534c;margin-top:15px;padding-top:10px;font-size:12px;color:#d0c3aa}
+.wayside-notes summary{cursor:pointer}.wayside-notes p{white-space:pre-line;font:14px/1.5 system-ui,sans-serif}
+@media(max-width:700px){#openAtlas,#openGuide{padding:6px;font-size:10px}}
+@media(pointer:coarse){.touch-actions{display:grid;grid-template-columns:repeat(2,minmax(48px,1fr))}}

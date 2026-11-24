@@ -2,6 +2,7 @@
   const scenes=[
     ['close','Keeper portrait','Close camera','Wheel up or cycle C','A woven brim, a wrapped grip and wave embroidery catch the lantern light. Wind pulls at the hem even when the keeper stands still.'],
     ['walk','On foot','Movement','WASD / arrows','Reverse direction and the robe swings past the legs before settling. Each planted foot taps on the stone court and scuffs on the river paths.'],
+    ['jump','Across the reed cut','Jump','J + direction / touch Jump','Hold a direction through the jump. At Heron Fen the northern boardwalk has washed away. Clear the dark water, land on the reed island, then read the flood pole.'],
     ['yard','Reedwater Ferry','Wide camera','Wheel down or cycle C','The ferry gong hangs below two tiled roofs. Seek the grove and market watchfires, then cross a footbridge to the kiln terrace. The bearing beneath the objective points the way.'],
     ['dash','Shadow step','Dash','Shift + direction','Burst toward a gap or slip past a shade. Fading silhouettes mark the route. The gold meter fills when the next dash is ready.'],
     ['slash','Crescent slash','Single attack','Left click once','Aim with the pointer. The keeper draws the blade up, cuts across the body and returns to guard.'],

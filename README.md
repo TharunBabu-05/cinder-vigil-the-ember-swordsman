@@ -36,6 +36,8 @@ These GIFs were captured from the playable game. Open **Field guide** in the hea
 | Action | Desktop | Touch |
 | --- | --- | --- |
 | Walk | WASD or arrow keys | Direction pad |
+| Jump | J, with a movement direction to carry the jump | Hold the pad and tap Jump |
+| Open the river atlas | G or Atlas | Atlas |
 | Crescent slash | Left-click to aim, or Space to strike in the facing direction | Tap Strike |
 | Crossing lunge | Double-click, or press Space twice | Double-tap Strike |
 | Dash | Shift with a direction, or Shift to dash forward | Dash with the pad, or Dash alone |
@@ -48,6 +50,22 @@ These GIFs were captured from the playable game. Open **Field guide** in the hea
 ## The night watch
 
 Each watchfire wakes a shade. Follow the bearing below the objective through the court openings and over the timber footbridges. When all three fires burn, return to the bronze gong in the gatehouse. Ringing it restores vitality and begins the second chapter.
+
+### The pilots’ survey
+
+Nao used to make paper charts for the ferry crews. Her unfinished copy lies on the survey desk west of the gatehouse court. Open **Atlas** with **G** to see your position, bridge crossings, ferry duties and survey stations. Select a station and choose **Track on compass**. The roads are open from the start, and you can visit the stations in any order.
+
+| Station | What you can discover |
+| --- | --- |
+| Mulberry Mill | Follow the cedar cutters’ track to the millrace and take a rubbing of the heron watermark. |
+| Heron Fen | Cross the western timber bridge and jump the broken boardwalk. The flood pole on the island holds the pilots’ water marks. |
+| Nine-Reed Observatory | Follow the shale road south of the kilns and sight the star in the brass instrument that once guided the ferry through fog. |
+
+Bring the three records back to the survey desk and bind the chart. **Travel here** then appears in the atlas when you stand at one station and select another. Off the marked roads, the reedcutters’ blind and the shepherds’ fold offer stories and restore vitality on your first visit to each. Their locations appear on your chart when you find them.
+
+![The keeper jumps the broken boardwalk in Heron Fen](media/jump.gif)
+
+Press **J** to jump in place or hold a direction to clear low courtyard rails, marsh gaps or the bell warden’s ground wave. A short landing over the marsh returns you to firm ground. After the ferry arrives, choose **Keep exploring** to finish your survey. Survey notes last for the current watch, including checkpoint retries.
 
 ### The last ferry
 
@@ -75,4 +93,4 @@ The first gameplay input starts the original score. Left and right footfalls use
 
 ## Player count
 
-The hosted game displays a shared total of browsers that have started playing since the counter was added. Moving, attacking, dashing or interacting counts as play. A flag stored in the browser keeps repeat plays and refreshes from raising the total. Private windows, separate devices and cleared site data can count separately. The browser sends the game’s counter key to [Abacus](https://v2.jasoncameron.dev/abacus/) to read or increment the total. The game keeps the flag on the device.
+The hosted game displays a shared total of browsers that have started playing since the counter was added. Moving, jumping, attacking, dashing or interacting counts as play. A flag stored in the browser keeps repeat plays and refreshes from raising the total. Private windows, separate devices and cleared site data can count separately. The browser sends the game’s counter key to [Abacus](https://v2.jasoncameron.dev/abacus/) to read or increment the total. The game keeps the flag on the device.

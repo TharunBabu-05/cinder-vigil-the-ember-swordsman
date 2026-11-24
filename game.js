@@ -11,7 +11,7 @@
   const post=(x,y,sprite,type='scenery')=>props.push({x,y,sprite,type});
   post(0,0,gatehouse,'gatehouse');
   const water=[];
-  for(let start=-1600;start<1600;start+=200){
+  for(let start=-2200;start<1800;start+=200){
     const y=Art.riverY(start);water.push({point:project(start,y),sprite:Art.riverSection(start)});
   }
   const crossing=Art.bridge();
@@ -53,6 +53,7 @@
   }
   flames.forEach((f,index)=>{post(f.x,f.y,bowl,'fire'+index);obstacles.push([f.x,f.y,8]);});
   Reach.scenery(post,obstacles);
+  Survey.scenery(post,obstacles,trees,stones);
   const motes=Array.from({length:65},()=>({x:rand()*1260-610,y:rand()*530-130,z:rand()*48,phase:rand()*tau}));
   let width=0,height=0,dpr=1,fit=1,mode='play',muted=true,audio=null,t=0,last=0,elapsed=0;
   let player,keys=new Set(),wisps=[],sparks=[],paths=[],zoom=1,wantedZoom=1,camX=0,camY=0,shake=0,active=null;
@@ -60,6 +61,9 @@
   let swordTrail=[],lastPress=-Infinity;
   let intro=true,echoes=[],nextEcho=0,soundChosen=false;
   let stage=-1,letter=0,trackLetter=false,bolts=[],swingNumber=0,arrival=0;
+  const findings=new Set(),visitedRests=new Set();
+  let charted=false,surveyStarted=false,trackedSite=null,rescued=false;
+  const jumpDuration=.70,jumpPeak=34;
   const score=$('score');score.volume=.65;
   let flashUntil=0,noticeTime=0,initialized=false;
   function resize(){
@@ -76,26 +80,29 @@
     const checkpoint=mode==='lost'&&stage>=0;
     const spawn=checkpoint?[door,Reach.wreck,Reach.sluice,Reach.beacon,Reach.beacon][stage]:null;
     if(!checkpoint){stage=-1;letter=0;trackLetter=false;}
+    if(mode!=='lost'){findings.clear();visitedRests.clear();charted=false;surveyStarted=false;trackedSite=null;rescued=false;}
     if(stage===3)stage=2;
-    player={x:spawn?spawn.x:5,y:spawn?spawn.y+32:101,angle:-.65,walk:0,moving:false,hp:letter===2?4:3,attack:0,cooldown:0,form:"slash",queued:false,stepCount:0,invuln:0,dashTime:0,dashCooldown:0,dashX:0,dashY:0,pose:0,cloth:Keeper.motion()};
+    player={x:spawn?spawn.x:5,y:spawn?spawn.y+32:101,angle:-.65,walk:0,moving:false,hp:letter===2?4:3,attack:0,cooldown:0,form:"slash",queued:false,stepCount:0,invuln:0,dashTime:0,dashCooldown:0,dashX:0,dashY:0,pose:0,cloth:Keeper.motion(),
+      z:0,airTime:0,jumpCooldown:0,safeX:0,safeY:0};
     for(const f of flames)f.lit=checkpoint;
     wisps=[];bolts=[];sparks=[];paths=[];keys.clear();elapsed=0;arrival=0;mode='play';shake=0;active=null;noticeTime=0;
     view.classList.remove('homecoming');
-    for(const [kind,x,y] of Reach.patrols)spawnShade(kind,x,y,true);
+    for(const [kind,x,y] of [...Reach.patrols,...Survey.patrols])spawnShade(kind,x,y,true);
     swordTrail=[];lastPress=-Infinity;echoes=[];nextEcho=0;intro=true;syncMusic();wantedZoom=zoom=1;const [x,y]=project(player.x,player.y);camX=x+30;camY=y-117;
     $('overlay').hidden=true;$('message').textContent='';$('interaction').textContent='';updateHud();world.focus({preventScroll:true});
-    if(checkpoint)notify('Back on watch. '+Reach.orders[stage].title+'.');
+    if(checkpoint)notify(rescued?'Back on the headland. The ferry is safe.':'Back on watch. '+Reach.orders[stage].title+'.');
+    else if(!surveyStarted)notify('The watchfires are dark. Open the river atlas to find the old survey roads.',5);
   }
   function updateHud(){
     const n=flames.filter(f=>f.lit).length;
-    const duties=[stage>=1,stage>=2,stage>=4,mode==='won'];
+    const duties=[stage>=1,stage>=2,stage>=4,rescued];
     const checks=stage<0?flames.map(f=>f.lit):duties;
     let order=Reach.orders[stage];
     if(stage<0)order={
       title:n===3?'Sound the gatehouse gong':'Kindle the watchfires',
       entry:'The cedar cutters, dyers and kiln workers each kept a fire for the ferry. Kindle all three, then ring the gong to hear from the far bank.'
     };
-    if(mode==='won')order={title:'The ferry is home',entry:'The workers have reached Salt Quay. Your watch is complete.'};
+    if(rescued)order={title:'The ferry is home',entry:'The workers have reached Salt Quay. The survey roads and the pilots’ shrine are open to explore.'};
     $('seals').textContent=checks.map(done=>done?'◆':'◇').join(' ');
     $('count').textContent=stage<0?n+' / 3 lit':duties.filter(Boolean).length+' / 4 duties';
     $('chapter').textContent=stage<0?'The night watch':'The last ferry';
@@ -108,8 +115,13 @@
     $('trackLetter').hidden=letter===2||mode==='won';
     $('trackLetter').textContent=trackLetter?'Follow main duty':'Follow letter';
     $('trackLetter').setAttribute('aria-pressed',String(trackLetter));
+    if(trackedSite&&mode!=='won'){
+      $('chapter').textContent='The pilots’ survey';$('mission').textContent=trackedSite.name;
+      $('seals').textContent=Survey.sites.map(s=>findings.has(s.id)?'◆':'◇').join(' ');
+      $('count').textContent=findings.size+' / 3 recorded';
+    }
   }
-  function notify(msg){$('message').textContent=msg;noticeTime=3.6;$('message').style.opacity='1';}
+  function notify(msg,seconds=3.6){$('message').textContent=msg;noticeTime=seconds;$('message').style.opacity='1';}
   function tone(freq,duration,volume=.09,type='sine',delay=0,end=freq){
     if(muted||!audio)return;
     const o=audio.createOscillator(),g=audio.createGain(),when=audio.currentTime+delay;
@@ -149,7 +161,7 @@
     channel.play().catch(()=>{});
   }
   function footfall(){
-    const stone=player.x>=-620&&player.x<=565&&player.y<=188;
+    const stone=(player.x>=-620&&player.x<=565&&player.y<=188)||player.y>1100;
     const shoe=(stone?'stone':'sand')+(player.stepCount%2?'-l':'-r');
     const variant=((previousStep.get(shoe)||0)+1+Math.floor(rand()*2))%3;
     previousStep.set(shoe,variant);sample(shoe+(variant+1),stone?.48:.57,.97+rand()*.07);
@@ -170,13 +182,14 @@
     $('sound').textContent=muted?'Sound off':'Sound on';$('sound').setAttribute('aria-label',muted?'Enable music and sound':'Mute music and sound');$('sound').setAttribute('aria-pressed',String(!muted));
   }
   function startSound(e){
-    if($('guide').open||e.target.closest?.('#openGuide'))return;
+    if($('guide').open||$('atlas').open||e.target.closest?.('#openGuide,#openAtlas'))return;
     if(soundChosen||e.target.closest?.('#sound')||e.code==='KeyM')return;
-    if(e.type==='keydown'&&!mapping[e.code]&&!['Space','KeyE','KeyC','ShiftLeft','ShiftRight'].includes(e.code))return;
+    if(e.type==='keydown'&&!mapping[e.code]&&!['Space','KeyE','KeyJ','KeyC','ShiftLeft','ShiftRight'].includes(e.code))return;
     toggleSound();
   }
   function modal(state){
     mode=state;syncMusic();clearInput();$('overlay').hidden=false;$('interaction').textContent='';
+    $('explore').hidden=state!=='won';
     const content={pause:['Watch paused',$('orderCopy').textContent,'Resume watch'],
       lost:['The vigil fades',stage>=0?'The ferryman keeps your place. Return to the last duty with your vitality restored.':'The shades have taken the yard. The ferry gate waits for another watch.',stage>=0?'Return to checkpoint':'Try again'],
       won:['The last ferry comes home','The pilot sees the beacon. A hull parts the reeds below Salt Quay, and the ferryman brings the last kiln workers home before dawn.','Keep another vigil']}[state];
@@ -191,10 +204,14 @@
   const door={x:Art.doorX,y:22,name:'Gatehouse gong'};
   function letterSite(){return letter===0?Reach.bag:Reach.shrine;}
   function dutySites(){
+    if(rescued)return [];
     if(stage>=0)return [Reach.orders[stage].site];
     const unlit=flames.filter(f=>!f.lit);return unlit.length?unlit:[door];
   }
   function actionFor(target){
+    if(visitedRests.has(target.id))return 'Listen at '+target.name;
+    if(target===Survey.desk&&findings.size===3&&!charted)return 'Bind the river chart';
+    if(Survey.stations.includes(target)&&(charted||findings.has(target.id)))return 'Open the river atlas';
     if(target===door)return 'Sound the gatehouse gong';
     if(target===Reach.beacon&&stage>=3)return stage===3?'Drive off the bell warden':'Light the pilot’s beacon';
     return target.action||'Kindle '+target.name.toLowerCase();
@@ -203,13 +220,40 @@
     const possible=dutySites();
     if(stage<0&&!possible.includes(door))possible.push(door);
     if(letter<2)possible.push(letterSite());
+    possible.push(...Survey.stations,...Survey.rests);
     return possible.find(o=>Math.hypot(player.x-o.x,player.y-o.y)<(o===door?43:40))||null;
   }
+  function inspectSite(site){
+    if(charted||findings.has(site.id)){openAtlas(site);return;}
+    surveyStarted=true;
+    if(site===Survey.desk){
+      if(findings.size===3){
+        charted=true;bell(392);trackedSite=null;
+        notify('The old ferry route is whole. Open the atlas at any survey station to travel between them.',7);
+      }else{
+        trackedSite=Survey.sites.find(s=>!findings.has(s.id));trackLetter=false;
+        notify('Nao left three blanks on her chart. Follow the map bearing, or choose another station in the atlas.',7);
+      }
+      return;
+    }
+    findings.add(site.id);bell([261.6,329.6,392][findings.size-1]);
+    burst(site.x,site.y,18,12,'#b4d7c4');
+    if(trackedSite===site||!trackedSite){
+      trackedSite=Survey.sites.find(s=>!findings.has(s.id))||Survey.desk;trackLetter=false;
+    }
+    notify(site.finding,8);
+  }
   function use(){
-    if(mode!=='play')return;
+    if(mode!=='play'||player.airTime>0)return;
     window.playerCount?.recordPlay();
     const target=nearTarget(),n=flames.filter(f=>f.lit).length;
-    if(!target){notify(trackLetter?'Follow the bearing to the '+letterSite().name.toLowerCase()+'.':$('mission').textContent+'. Follow the bearing.');return;}
+    if(!target){notify(trackedSite?'Follow the bearing to '+trackedSite.name+'.':trackLetter?'Follow the bearing to the '+letterSite().name.toLowerCase()+'.':rescued?'Choose a survey station in the river atlas.':$('mission').textContent+'. Follow the bearing.');return;}
+    if(Survey.stations.includes(target)){inspectSite(target);updateHud();return;}
+    if(Survey.rests.includes(target)){
+      const first=!visitedRests.has(target.id);
+      if(first){visitedRests.add(target.id);player.hp=letter===2?4:3;updateHud();tone(330,.9,.08);}
+      notify((first?'Vitality restored. ':'')+target.finding,8);return;
+    }
     if(target===Reach.bag||target===Reach.shrine){
       letter++;
       if(letter===2){player.hp=4;trackLetter=false;bell(392);}
@@ -226,7 +270,7 @@
       if(stage===3){notify(Reach.orders[3].entry);return;}
       burst(target.x,target.y,24,24,'#f0c993');bell(stage===4?196:330);
       if(stage===4){
-        modal('won');updateHud();view.classList.add('homecoming');
+        rescued=true;modal('won');updateHud();view.classList.add('homecoming');
         arrival=matchMedia('(prefers-reduced-motion: reduce)').matches?1:0;
         showArrival();return;
       }
@@ -238,9 +282,11 @@
     notify(n===2?'All fires are lit. Return to the gatehouse gong.':'A shade stirs. Strike with Space to drive it off.');
     spawnShade('shade',target.x+(target.x>300?-80:100),target.y+75);
   }
-  function blocked(x,y){
-    if(x< -1010||x>1390||y<17||y>1050)return true;
-    if(Math.abs(y-187)<5&&rails.some(([a,b])=>x>a-3&&x<b+3))return true;
+  function blocked(x,y,z=0){
+    const b=Survey.bounds;
+    if(x<b.west||x>b.east||y<b.north||y>b.south)return true;
+    if(z<15&&Math.abs(y-187)<5&&rails.some(([a,b])=>x>a-3&&x<b+3))return true;
+    if(z<4&&Survey.overPool(x,y))return true;
     if(Math.abs(y-Art.riverY(x))<38 && !Art.bridgeXs.some(b=>Math.abs(x-b)<21))return true;
     return obstacles.some(([ox,oy,r])=>(x-ox)**2+(y-oy)**2<r*r);
   }
@@ -252,14 +298,33 @@
     // Substep the burst so a low frame rate cannot skip a fence or watchfire.
     const steps=Math.max(1,Math.ceil(dt*speed/2.8)),dist=dt*speed/steps;
     for(let i=0;i<steps;i++){
-    if(!blocked(player.x+vx*dist,player.y))player.x+=vx*dist;
-    if(!blocked(player.x,player.y+vy*dist))player.y+=vy*dist;
+      if(!blocked(player.x+vx*dist,player.y,player.z))player.x+=vx*dist;
+      if(!blocked(player.x,player.y+vy*dist,player.z))player.y+=vy*dist;
     }
     if(player.attack<=0)player.angle=Math.atan2(-dx,dy);
 
   }
+  function jump(){
+    if(mode!=='play'||player.airTime>0||player.jumpCooldown>0||player.attack>0||player.dashTime>0)return;
+    window.playerCount?.recordPlay();player.airTime=jumpDuration;
+    player.safeX=player.x;player.safeY=player.y;
+    sample('dash',.24,1.35);
+  }
+  function advanceJump(dt){
+    player.jumpCooldown=Math.max(0,player.jumpCooldown-dt);
+    if(player.airTime<=0)return;
+    player.airTime=Math.max(0,player.airTime-dt);
+    const u=1-player.airTime/jumpDuration;player.z=4*jumpPeak*u*(1-u);
+    if(!blocked(player.x,player.y)){player.safeX=player.x;player.safeY=player.y;}
+    if(player.airTime===0){
+      if(blocked(player.x,player.y)){
+        player.x=player.safeX;player.y=player.safeY;notify('Short landing. Take a run at the gap and hold your direction.');
+      }
+      player.jumpCooldown=.14;footfall();burst(player.x,player.y,1,7,'#c6b99b');
+    }
+  }
   function dash(){
-    if(mode!=='play'||player.dashCooldown>0)return;
+    if(mode!=='play'||player.dashCooldown>0||player.airTime>0)return;
     window.playerCount?.recordPlay();
     const dx=Number(keys.has('right'))-Number(keys.has('left')),dy=Number(keys.has('down'))-Number(keys.has('up'));
     const length=Math.hypot(dx,dy);
@@ -274,7 +339,7 @@
     burst(player.x,player.y,5,14,'#e4bf8d');sample('dash',.72,1.24);
   }
   function strike(angle){
-    if(mode!=='play'||player.dashTime>0)return;
+    if(mode!=='play'||player.dashTime>0||player.airTime>0)return;
     const now=performance.now();
     if(player.attack>0){
       if(player.form==='slash'&&now-lastPress<=360)player.queued=true;
@@ -320,8 +385,8 @@
     }
   }
   function cycleZoom(){intro=false;const levels=[1,2.7,6.6,8];wantedZoom=levels.find(v=>v>wantedZoom+.12)||1;}
-  function hurt(source){
-    if(player.invuln>0||mode!=='play')return false;
+  function hurt(source,clearance=Infinity){
+    if(player.invuln>0||player.z>clearance||mode!=='play')return false;
     player.hp--;player.invuln=1.9;shake=4;flashUntil=t+.16;updateHud();tone(90,.4,.12,'triangle',0,36);
     if(!player.hp)modal('lost');else notify(source+' struck. Dash clear or answer with a cut.');
     return true;
@@ -350,6 +415,7 @@
   }
   function update(dt){
     t+=dt;elapsed+=dt;player.moving=false;player.cooldown=Math.max(0,player.cooldown-dt);player.invuln=Math.max(0,player.invuln-dt);
+    advanceJump(dt);
     if(intro&&elapsed>3.5){wantedZoom=2.7;intro=false;}
     player.dashCooldown=Math.max(0,player.dashCooldown-dt);
     const before=project(player.x,player.y);
@@ -373,7 +439,7 @@
       const speed=player.dashTime>0?.063:.108;
       player.walk+=distance*speed;
       const step=Math.floor(player.walk/Math.PI);
-      if(step!==player.stepCount){player.stepCount=step;footfall();}
+      if(step!==player.stepCount){player.stepCount=step;if(player.airTime<=0)footfall();}
     }
     for(const trace of swordTrail)trace.life-=dt;
     swordTrail=swordTrail.filter(trace=>trace.life>0);
@@ -397,7 +463,7 @@
       echoes.push({x:p[0],y:p[1],depth:player.y,life:.24,sprite:{...source,levels:[copy]}});
       nextEcho=t+.032;
     }
-    if(player.moving&&Math.floor(elapsed*12)!==Math.floor((elapsed-dt)*12)){
+    if(player.moving&&player.airTime<=0&&Math.floor(elapsed*12)!==Math.floor((elapsed-dt)*12)){
       paths.push({x:p[0],y:p[1]-1,life:1.1});
       if(rand()<.45)burst(player.x,player.y,20,1,'#c18958');
     }
@@ -410,7 +476,7 @@
     }
     for(const bolt of bolts){
       bolt.life-=dt;bolt.x+=bolt.vx*dt;bolt.y+=bolt.vy*dt;
-      if(Math.hypot(bolt.x-p[0],bolt.y-p[1])<9){bolt.life=0;hurt('Lantern moth');}
+      if(Math.hypot(bolt.x-p[0],bolt.y-p[1])<9&&player.z<18){bolt.life=0;hurt('Lantern moth');}
     }
     bolts=bolts.filter(b=>b.life>0);
     if(mode==='lost')return;
@@ -420,22 +486,29 @@
     if(Math.abs(wantedZoom-zoom)<.014)zoom=wantedZoom;
     camX+=(p[0]+30/zoom-camX)*tracking;camY+=(p[1]-18-99/zoom-camY)*tracking;
     shake=Math.max(0,shake-dt*12);
-    const action=player.attack>0?(player.form==='counter'?'Crossing lunge':player.queued?'Follow-up queued':'Crescent slash'):player.dashTime>0?'Shadow step':player.moving?'Walking':'On watch';
+    const action=player.airTime>0?'Jumping':player.attack>0?(player.form==='counter'?'Crossing lunge':player.queued?'Follow-up queued':'Crescent slash'):player.dashTime>0?'Shadow step':player.moving?'Walking':'On watch';
     if($('moveName').textContent!==action)$('moveName').textContent=action;
     $('dashFill').style.transform='scaleX('+Math.min(1,1-player.dashCooldown/.85)+')';
     const dashStatus=player.dashCooldown>0?'Recovering':'Dash ready';
     if($('dashLabel').textContent!==dashStatus)$('dashLabel').textContent=dashStatus;
-    active=nearTarget();
-    const prompt=active&&!(stage===3&&active===Reach.beacon)?(coarsePointer.matches?'[ Use ]  ':'[ E ]  ')+actionFor(active):'';
+    active=player.airTime>0?null:nearTarget();
+    let prompt=active&&!(stage===3&&active===Reach.beacon)?(coarsePointer.matches?'[ Use ]  ':'[ E ]  ')+actionFor(active):'';
+    const fenDx=Math.abs(player.x-Survey.fen.x),fenDy=Math.abs(player.y-Survey.fen.y);
+    if(!prompt&&!player.airTime&&fenDx<87&&fenDy<80&&(fenDx>48||fenDy>38)){
+      prompt=(coarsePointer.matches?'[ Jump ]':'[ J ]')+'  Jump the reed cut';
+    }
     if($('interaction').textContent!==prompt)$('interaction').textContent=prompt;
     const bank=Art.riverY(player.x);
-    const area=Reach.area(player.x,player.y)||(Math.abs(player.y-bank)<55?'Reedwater crossing':player.y>bank?'Kiln terrace':player.x>570?'Dyers market':player.x< -560?'Cedar grove':player.y>190?'River meadow':'Lantern court');
-    const goals=trackLetter?[letterSite()]:dutySites();
-    const target=goals.reduce((a,b)=>Math.hypot(player.x-a.x,player.y-a.y)<Math.hypot(player.x-b.x,player.y-b.y)?a:b);
-    const waypoint=nextWaypoint(target);
-    const [dx,dy]=project(waypoint.x-player.x,waypoint.y-player.y);
-    const arrow=['E','SE','S','SW','W','NW','N','NE'][(Math.round(Math.atan2(dy,dx)/(Math.PI/4))+8)%8];
-    const bearing=(trackLetter?'Letter · ':'')+waypoint.name+' / '+arrow;
+    const area=Survey.area(player.x,player.y)||Reach.area(player.x,player.y)||(Math.abs(player.y-bank)<55?'Reedwater crossing':player.y>bank?'Kiln terrace':player.x>570?'Dyers market':player.x< -560?'Cedar grove':player.y>190?'River meadow':'Lantern court');
+    const goals=trackedSite?[trackedSite]:trackLetter?[letterSite()]:dutySites();
+    let bearing='Explore Reedwater · Open the atlas';
+    if(goals.length){
+      const target=goals.reduce((a,b)=>Math.hypot(player.x-a.x,player.y-a.y)<Math.hypot(player.x-b.x,player.y-b.y)?a:b);
+      const waypoint=nextWaypoint(target);
+      const [dx,dy]=project(waypoint.x-player.x,waypoint.y-player.y);
+      const arrow=['E','SE','S','SW','W','NW','N','NE'][(Math.round(Math.atan2(dy,dx)/(Math.PI/4))+8)%8];
+      bearing=(trackedSite?'Survey · ':trackLetter?'Letter · ':'')+waypoint.name+' / '+arrow;
+    }
     if($('bearing').textContent!==bearing)$('bearing').textContent=bearing;
     if($('area').textContent!==area)$('area').textContent=area;
     noticeTime=Math.max(0,noticeTime-dt);if(noticeTime<.45)$('message').style.opacity=String(noticeTime/.45);
@@ -466,7 +539,7 @@
   }
   function keeperSprite(){
     const swing=player.attack>0?1-player.attack/duration[player.form]:0;
-    return Art.pilgrim(player.angle,player.walk,swing,t,player.cloth,player.pose,player.moving,player.form);
+    return Art.pilgrim(player.angle,player.walk,swing,t,player.cloth,player.pose,player.moving,player.form,player.z/jumpPeak);
   }
   function hero(x,y){
     for(let i=1;i<swordTrail.length;i++){
@@ -502,6 +575,7 @@
   function paintBackdrop(g,minX,minY,maxX,maxY){
     for(let y=Math.floor(minY/216)*216;y<maxY;y+=216)
       for(let x=Math.floor(minX/288)*288;x<maxX;x+=288)Art.draw(g,meadow,x,y);
+    Survey.terrain(g,minX,minY,maxX,maxY);
     Art.draw(g,ground);
     for(const w of water){
       const [x,y]=w.point;
@@ -553,10 +627,11 @@
       const [x,y]=project(q.x,q.y);if(x<minX-450||x>maxX+450||y<minY-100||y>maxY+370)continue;
       shadow(x+7,y+3,39,11,.7);
     }
-    shadow(px+3,py+.6,15,4,.95);
+    const lift=player.z/jumpPeak;
+    shadow(px+3,py+.6,15-4*lift,4-lift,.95-.34*lift);
     const figure=keeperSprite();
     ctx.save();ctx.translate(px,py);ctx.transform(1,.04,-.67,.19,0,0);
-    ctx.globalAlpha=.77;ctx.drawImage(figure.shadow,figure.left,figure.top,figure.w,figure.h);ctx.restore();
+    ctx.globalAlpha=.77-.38*lift;ctx.drawImage(figure.shadow,figure.left+player.z*.48,figure.top,figure.w,figure.h);ctx.restore();
     for(const p of paths){ctx.globalAlpha=Math.min(1,p.life)*.55;glyph(ctx,'.',p.x,p.y,'#e0b08a',4);}ctx.globalAlpha=1;
     const visible=[];
     const boat=ferryPosition(),[boatX,boatY]=project(...boat);
@@ -575,11 +650,37 @@
       const depth=q.type==='gatehouse'?-100:q.type==='woods'?-600:q.y;
       visible.push({depth,paint:()=>{
         if(q.type!=='gatehouse'){
-          const coversKeeper=depth>player.y&&sp.h>58&&px+8>x+sp.left&&px-8<x+sp.left+sp.w&&py-7>y+sp.top&&py-35<y+sp.top+sp.h;
+          const coversKeeper=depth>player.y&&sp.h>58&&px+8>x+sp.left&&px-8<x+sp.left+sp.w&&py-player.z-7>y+sp.top&&py-player.z-35<y+sp.top+sp.h;
           if(coversKeeper)ctx.globalAlpha=.37;
           Art.draw(ctx,sp,x,y);ctx.globalAlpha=1;
         }
         if(q.type.startsWith('fire'))fire(x,y,Number(q.type.slice(4)));
+        const station=Survey.stations.find(site=>site.id===q.type);
+        if(station){
+          const inked=station===Survey.desk?charted:findings.has(station.id);
+          if(!inked||station===trackedSite)marker(x,y-station.height);
+          if(inked)glow(x,y-station.height+18,9,'#a9d7bf',.38);
+        }
+        if(q.type==='fold'){
+          glow(x,y-19,22,'#f7a45d',.28);
+          for(let i=0;i<8;i++){const u=(i/8+t*.9)%1;glyph(ctx,'*',x+Math.sin(i+t*4)*3,y-17-u*12,'#ffc283',4-u*2);}
+        }
+        if(q.type==='blind'||q.type==='fen'){
+          for(let i=0;i<3;i++){
+            const bx=x-24+i*17,by=y+9+3*Math.sin(t*.65+i);
+            glyph(ctx,'~',bx,by+2,'#718c85',5);glyph(ctx,'v',bx,by,'#d2ccac',6);
+          }
+        }
+        if(q.type==='mill'){
+          for(let i=0;i<14;i++){
+            const u=(t*.86+i*.17)%1;
+            glyph(ctx,i%3?'~':'+',x+32+Math.sin(i*12)*5-u*8,y+12+u*12,'#a5c2b7',3.5);
+          }
+        }
+        if(q.type==='stars'){
+          const a=t*.22;
+          glyph(ctx,'+',x+34*Math.cos(a),y-78+31*Math.sin(a),'#ead9a4',5);
+        }
         if(q.type==='wreck'&&stage===0)marker(x,y-74);
         if(q.type==='sluice'){
           if(stage===1)marker(x,y-75);
@@ -590,7 +691,7 @@
         }
         if(q.type==='beacon'){
           if(stage>=2&&stage!==3)marker(x,y-132);
-          if(mode==='won')glow(x,y-93,48,'#ffe0a4',.85);
+          if(rescued)glow(x,y-93,48,'#ffe0a4',.85);
         }
         if(q.type==='bag'||(q.type==='shrine'&&letter===1))marker(x,y-(q.type==='bag'?23:53));
         if(q.type==='shrine'&&letter===2)glow(x,y-16,14,'#ffba72',.52);
@@ -603,7 +704,7 @@
     for(const e of echoes)visible.push({depth:e.depth,paint:()=>{
       ctx.globalAlpha=.48*(e.life/.24);Art.draw(ctx,e.sprite,e.x,e.y);ctx.globalAlpha=1;
     }});
-    visible.push({depth:player.y,paint:()=>hero(px,py)});
+    visible.push({depth:player.y,paint:()=>hero(px,py-player.z)});
     for(const w of wisps){
       if(w.x<minX-140||w.x>maxX+140||w.y<minY-100||w.y>maxY+100)continue;
       visible.push({depth:(w.y-.275*w.x)/(.58+.275*.77),paint:()=>Shades.draw(ctx,w,t,glyph,glow)});
@@ -636,13 +737,19 @@
     }
   },{passive:true});
   window.addEventListener('keydown',e=>{
+    if($('atlas').open){
+      if(e.code==='Escape'||e.code==='KeyG'){e.preventDefault();if(!e.repeat)$('atlas').close();}
+      return;
+    }
     if($('guide').open){
       if(e.code==='Escape'){e.preventDefault();$('guide').close();}
       return;
     }
     if(e.altKey||e.ctrlKey||e.metaKey)return;
+    if(e.code==='KeyG'){e.preventDefault();if(!e.repeat)openAtlas();return;}
     if(e.code==='Escape'&&!e.repeat){e.preventDefault();pause();return;}
     if(mode!=='play')return;
+    if(e.code==='KeyJ'){e.preventDefault();if(!e.repeat)jump();return;}
     if(e.code==='ShiftLeft'||e.code==='ShiftRight'){e.preventDefault();if(!e.repeat)dash();return;}
     if(mapping[e.code]){e.preventDefault();pressed.add(e.code);syncKeys();return;}
     if(['Space','KeyE','KeyC','KeyM','Equal','Minus'].includes(e.code)){
@@ -656,6 +763,11 @@
   function clearInput(){pressed.clear();keys.clear();lastPress=-Infinity;}
   window.addEventListener('blur',clearInput);document.addEventListener('visibilitychange',()=>{clearInput();if(document.hidden&&mode==='play'&&initialized)modal('pause');});
   $('resume').onclick=()=>{clearInput();if(mode==='pause')unpause();else reset();};
+  $('explore').onclick=()=>{
+    arrival=1;view.classList.remove('homecoming');unpause();wantedZoom=zoom=2.7;
+    const [x,y]=project(player.x,player.y);camX=x;camY=y-55;
+    updateHud();notify('The ferry is home. Open the atlas to pick your next stop.');
+  };
   $('pause').onclick=()=>{clearInput();pause();};$('sound').onclick=()=>{toggleSound();world.focus({preventScroll:true});};
   $('zoom').onclick=()=>{if(mode==='play')cycleZoom();world.focus({preventScroll:true});};
   world.addEventListener('wheel',e=>{e.preventDefault();intro=false;if(mode==='play')wantedZoom=Math.max(.8,Math.min(8.5,wantedZoom*Math.exp(-Math.sign(e.deltaY)*.18)));},{passive:false});
@@ -671,6 +783,7 @@
     b.onlostpointercapture=()=>{pressed.delete(dir);syncKeys();};
   }
   $('touchDash').onclick=dash;
+  $('touchJump').onclick=jump;
   $('touchAttack').onclick=()=>strike();$('touchUse').onclick=use;
   let guidePaused=false;
   $('openGuide').onclick=()=>{
@@ -679,15 +792,72 @@
     $('guide').showModal();
   };
   $('closeGuide').onclick=()=>$('guide').close();
-  $('trackLetter').onclick=()=>{trackLetter=!trackLetter;updateHud();};
+  $('trackLetter').onclick=()=>{trackedSite=null;trackLetter=!trackLetter;updateHud();};
   $('guide').addEventListener('close',()=>{
     if(guidePaused){unpause();guidePaused=false;}else $('openGuide').focus();
+  });
+  let selectedSite=Survey.desk,atlasPaused=false;
+  function atStation(){return Survey.stations.find(s=>Math.hypot(player.x-s.x,player.y-s.y)<42);}
+  function showStation(site){
+    selectedSite=site;
+    for(const b of $('stations').children)b.setAttribute('aria-pressed',String(b.dataset.site===site.id));
+    Survey.drawMap($('chart'),player,findings,site,dutySites(),visitedRests);
+    $('waysideTitle').textContent='Wayside notes · '+visitedRests.size+' / '+Survey.rests.length;
+    $('waysideLog').textContent=visitedRests.size?Survey.rests.filter(s=>visitedRests.has(s.id)).map(s=>s.name+' — '+s.finding).join('\n\n'):'Off the marked roads, look for the reedcutters’ shelter and a shepherds’ fire. Both offer a place to rest.';
+    $('chart').setAttribute('aria-label','River chart. You are in '+$('area').textContent+'. Selected station: '+site.name+'.');
+    $('surveyCount').textContent=charted?'Chart bound':findings.size+' / 3 records';
+    $('stationTitle').textContent=site.name;
+    if(site===Survey.desk){
+      $('stationNote').textContent=charted?'Nao’s sheets are bound in river order again. The pilots will carry the keeper between all four survey stations.':
+        findings.size===3?'Bring all three records to the desk and bind the river chart. The pilots can then take you between stations.':
+        'At the west end of the gatehouse court, Nao left a chart with three empty margins. Collect the mill watermark, the flood marks and the star sighting in any order.';
+    }else $('stationNote').textContent=findings.has(site.id)?site.finding:site.clue;
+    $('pinStation').textContent=trackedSite===site?'Clear bearing':'Track on compass';
+    $('pinStation').hidden=!atlasPaused;
+    const from=atStation();
+    const canTravel=charted&&atlasPaused&&player.airTime===0&&from&&from!==site;
+    $('travelStation').hidden=!canTravel;
+    $('travelHint').textContent=charted&&!from?'Return to a survey station to travel.':'';
+  }
+  function openAtlas(site){
+    if($('atlas').open||$('guide').open)return;
+    atlasPaused=mode==='play';
+    if(atlasPaused){mode='atlas';clearInput();syncMusic();}
+    $('atlas').showModal();showStation(site||trackedSite||Survey.desk);
+  }
+  for(const site of Survey.stations){
+    const b=document.createElement('button');b.dataset.site=site.id;b.textContent=site.name;
+    b.onclick=()=>showStation(site);$('stations').append(b);
+  }
+  $('openAtlas').onclick=()=>openAtlas();
+  $('chart').onclick=e=>{
+    const canvas=$('chart'),rect=canvas.getBoundingClientRect();
+    const site=Survey.stations.find(s=>{
+      const [x,y]=Survey.chartPoint(s.x,s.y);
+      return Math.hypot(e.clientX-rect.left-x/canvas.width*rect.width,e.clientY-rect.top-y/canvas.height*rect.height)<17;
+    });
+    if(site)showStation(site);
+  };
+  $('closeAtlas').onclick=()=>$('atlas').close();
+  $('pinStation').onclick=()=>{
+    trackedSite=trackedSite===selectedSite?null:selectedSite;trackLetter=false;
+    updateHud();$('atlas').close();
+  };
+  $('travelStation').onclick=()=>{
+    if(!charted||!atlasPaused||player.airTime>0||!atStation()||atStation()===selectedSite)return;
+    player.x=selectedSite.x;player.y=selectedSite.y+34;player.invuln=1.2;
+    player.attack=0;player.queued=false;player.dashTime=0;swordTrail=[];echoes=[];
+    const [x,y]=project(player.x,player.y);camX=x;camY=y-55;
+    $('atlas').close();notify('Arrived at '+selectedSite.name+'.');
+  };
+  $('atlas').addEventListener('close',()=>{
+    if(atlasPaused){unpause();atlasPaused=false;}else $('openAtlas').focus();
   });
   new ResizeObserver(resize).observe(view);resize();reset();
   function frame(now){
     const dt=last?Math.min((now-last)/1000,.045):0;last=now;
     if(mode==='play'){update(dt);render();}
-    else if(mode==='won'&&arrival<1&&!$('guide').open&&!document.hidden){
+    else if(mode==='won'&&arrival<1&&!$('guide').open&&!$('atlas').open&&!document.hidden){
       t+=dt;arrival=Math.min(1,arrival+dt/6);showArrival();
     }
     initialized=true;requestAnimationFrame(frame);

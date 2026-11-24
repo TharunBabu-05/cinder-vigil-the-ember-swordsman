@@ -38,7 +38,7 @@ const Shades = (() => {
       if(w.state==='lunge'){w.x+=w.aimX*168*dt;w.y+=w.aimY*168*dt;}
       const gap=w.state==='ring'?Math.abs(Math.hypot(dx,dy/.74)-(1-w.timer)*85):Math.hypot(p[0]-w.x,p[1]-w.y);
       if(!w.spent&&gap<(w.state==='ring'?6:12)){
-        w.spent=true;hurt(w.spec.name);
+        w.spent=true;hurt(w.spec.name,w.state==='ring'?9:19);
       }
       if(w.timer===0){w.state='idle';w.cooldown=w.kind==='warden'?1.7:1.35;}
       return;

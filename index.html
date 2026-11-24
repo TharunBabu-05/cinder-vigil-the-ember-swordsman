@@ -5,27 +5,27 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b0d11">
 <title>Cinder Vigil &middot; The Ember Swordsman</title>
-<link rel="stylesheet" href="style.css?v=last-ferry">
+<link rel="stylesheet" href="style.css?v=river-atlas">
 </head>
 <body>
 <main id="game">
 <header>
   <div class="brand"><span class="ember-mark" aria-hidden="true"><i></i></span><div><h1>Cinder Vigil</h1><small>The Ember Swordsman</small></div></div>
   <div class="location"><i></i> Reedwater Ferry <i></i></div>
-  <div class="actions"><button id="openGuide" aria-haspopup="dialog">Field guide</button><button id="sound" aria-label="Enable sound" title="Toggle sound (M)" aria-pressed="false">Sound off</button><button id="pause" aria-label="Pause game" title="Pause (Esc)">Ⅱ</button></div>
+  <div class="actions"><button id="openAtlas" aria-haspopup="dialog" title="River atlas (G)">Atlas</button><button id="openGuide" aria-haspopup="dialog">Field guide</button><button id="sound" aria-label="Enable sound" title="Toggle sound (M)" aria-pressed="false">Sound off</button><button id="pause" aria-label="Pause game" title="Pause (Esc)">Ⅱ</button></div>
 </header>
 <section id="view" aria-label="Reedwater and Beacon Headland">
-  <canvas id="world" tabindex="0" aria-label="Playable ASCII ferry district. Move with WASD or arrow keys, dash with Shift, left-click for a slash or double-click for a crossing lunge, and interact with E."></canvas>
+  <canvas id="world" tabindex="0" aria-label="Playable ASCII ferry district. Move with WASD or arrows, jump with J, dash with Shift, slash with a click or double-click for a lunge, interact with E, and open the atlas with G."></canvas>
   <div class="objective"><div class="chapter"><span class="diamond"></span><span id="chapter">The night watch</span></div><h2 id="mission">Kindle the watchfires</h2><div class="progress"><span id="seals" aria-hidden="true">◇ ◇ ◇</span><span id="count">0 / 3 lit</span></div><small id="bearing" aria-label="Nearest destination"></small></div>
   <div class="stance"><span id="moveName">On watch</span><div class="dash-meter"><i id="dashFill"></i></div><small id="dashLabel">Dash ready</small></div>
   <div id="message" role="status"></div><div id="interaction"></div>
   <div class="vitals"><span>Vitality</span><strong id="health" aria-label="3 vitality">◆ ◆ ◆</strong></div>
   <div class="map-tag"><span>✧</span> <span id="area">Lantern court</span></div>
-  <div id="touch"><div class="pad"><button data-move="up" aria-label="Move up">↑</button><button data-move="left" aria-label="Move left">←</button><button data-move="down" aria-label="Move down">↓</button><button data-move="right" aria-label="Move right">→</button></div><div class="touch-actions"><button id="touchDash">Dash</button><button id="touchAttack">Strike</button><button id="touchUse">Use</button></div></div>
-  <div id="overlay" hidden><div class="panel"><div class="ornament" aria-hidden="true">─── ◈ ───</div><h2 id="overlayTitle">Watch paused</h2><p id="overlayCopy"></p><button id="resume">Resume watch</button></div></div>
+  <div id="touch"><div class="pad"><button data-move="up" aria-label="Move up">↑</button><button data-move="left" aria-label="Move left">←</button><button data-move="down" aria-label="Move down">↓</button><button data-move="right" aria-label="Move right">→</button></div><div class="touch-actions"><button id="touchJump">Jump</button><button id="touchDash">Dash</button><button id="touchAttack">Strike</button><button id="touchUse">Use</button></div></div>
+  <div id="overlay" hidden><div class="panel"><div class="ornament" aria-hidden="true">─── ◈ ───</div><h2 id="overlayTitle">Watch paused</h2><p id="overlayCopy"></p><button id="explore" hidden>Keep exploring</button> <button id="resume">Resume watch</button></div></div>
 </section>
 <footer>
-  <div class="keys"><span><kbd>WASD</kbd> Move</span><span><kbd>SHIFT</kbd> Dash</span><span><kbd>LMB</kbd> Slash</span><span><kbd>2&times; LMB</kbd> Crossing lunge</span><span><kbd>E</kbd> Interact</span></div>
+  <div class="keys"><span><kbd>WASD</kbd> Move</span><span><kbd>J</kbd> Jump</span><span><kbd>SHIFT</kbd> Dash</span><span><kbd>2&times; LMB</kbd> Crossing lunge</span><span><kbd>LMB</kbd> Slash</span><span><kbd>E</kbd> Interact</span></div>
   <div class="footer-tools">
     <button id="zoom" title="Cycle view (C) or use the mouse wheel"><kbd>C</kbd> <span>Zoom</span></button>
     <div id="player-badge" class="player-badge" hidden>
@@ -35,6 +35,18 @@
   </div>
 </footer>
 </main>
+<dialog id="atlas" aria-labelledby="atlasTitle">
+  <header class="guide-head"><div><small>Reedwater survey</small><h2 id="atlasTitle">River atlas</h2></div><button id="closeAtlas" autofocus>Return to game <kbd>Esc</kbd></button></header>
+  <div class="atlas-body">
+    <div class="atlas-legend"><span><i></i> Your position</span><span><i></i> Ferry duty</span><span><i></i> Survey station</span></div>
+    <canvas id="chart" width="800" height="350" role="img" aria-label="Reedwater river chart"></canvas>
+    <div class="atlas-index"><h3>Survey stations</h3><small id="surveyCount"></small></div>
+    <nav id="stations" aria-label="Choose a survey station"></nav>
+    <section class="atlas-entry" aria-live="polite"><h3 id="stationTitle"></h3><p id="stationNote"></p></section>
+    <div class="atlas-actions"><button id="pinStation"></button><button id="travelStation" hidden>Travel here</button><small id="travelHint"></small></div>
+    <details class="wayside-notes"><summary id="waysideTitle">Wayside notes</summary><p id="waysideLog"></p></details>
+  </div>
+</dialog>
 <dialog id="guide" aria-labelledby="guideTitle">
   <header class="guide-head"><div><small>Reedwater Ferry</small><h2 id="guideTitle">Field guide</h2></div><button id="closeGuide" autofocus>Return to game <kbd>Esc</kbd></button></header>
   <section class="watch-orders" aria-label="Watch journal">
@@ -52,11 +64,13 @@
     <dl><dt>Watchfire shade</dt><dd>A drifting mask drawn to a newly lit fire. One clean cut scatters it.</dd><dt>Reed stalker</dt><dd>Look for the ochre line along the ground. Step aside as it rushes, then catch it on the recovery.</dd><dt>Lantern moth</dt><dd>Its wings flash blue and a dotted line marks its aim. Move across the line as the spark leaves its wings.</dd><dt>Bell warden</dt><dd>Its crown glows before each toll. Dash through the expanding ring and land a crossing lunge before the next toll.</dd></dl>
   </details>
   <details class="reference"><summary>Sound &amp; all controls</summary>
+    <p>Press J or tap Jump while moving to vault the low courtyard rails or cross missing boards. G opens the river atlas. At the survey desk west of the gatehouse court, read Nao’s unfinished chart to start her survey.</p>
     <dl><dt>Move</dt><dd>WASD, arrows or touch pad</dd><dt>Slash / crossing lunge</dt><dd>Click / double-click. Space or the touch Strike button also accepts one or two presses.</dd><dt>Dash</dt><dd>Shift or Dash on touch</dd><dt>Use a landmark or item</dt><dd>E or Use on touch</dd><dt>Camera</dt><dd>C, Zoom, mouse wheel or + / &minus;</dd><dt>Music &amp; footsteps</dt><dd>M or the sound button. Recorded footsteps change between paving and earth. Blade swishes and the dash share this switch.</dd><dt>Pause / resume</dt><dd>Esc or the pause button</dd></dl>
   </details>
 </dialog>
 <audio id="score" src="ashmere.ogg" preload="auto" loop></audio>
-<script src="keeper.js"></script><script src="art.js?v=last-ferry"></script>
-<script src="reach.js"></script><script src="shades.js"></script><script src="guide.js?v=last-ferry"></script>
-<script src="players.js"></script><script src="game.js?v=last-ferry"></script>
+<script src="keeper.js?v=river-atlas"></script><script src="art.js?v=river-atlas"></script>
+<script src="reach.js?v=river-atlas"></script><script src="survey.js"></script>
+<script src="shades.js?v=river-atlas"></script><script src="guide.js?v=river-atlas"></script>
+<script src="players.js"></script><script src="game.js?v=river-atlas"></script>
 </body></html>
