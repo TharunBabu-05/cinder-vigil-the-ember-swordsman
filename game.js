@@ -163,6 +163,7 @@
   }
   function use(){
     if(mode!=='play')return;
+    window.playerCount?.recordPlay();
     const target=nearTarget(),n=flames.filter(f=>f.lit).length;
     if(!target){notify(n===3?'Return to the ferry gate.':'Approach a watchfire marked with a diamond.');return;}
     if(target===door){
@@ -196,6 +197,7 @@
   }
   function dash(){
     if(mode!=='play'||player.dashCooldown>0)return;
+    window.playerCount?.recordPlay();
     const dx=Number(keys.has('right'))-Number(keys.has('left')),dy=Number(keys.has('down'))-Number(keys.has('up'));
     const length=Math.hypot(dx,dy);
     player.dashX=length?dx/length:-Math.sin(player.angle);
@@ -216,6 +218,7 @@
       return;
     }
     if(player.cooldown>0)return;
+    window.playerCount?.recordPlay();
     if(typeof angle==='number')player.angle=angle;
     lastPress=now;player.form='slash';player.attack=duration.slash;
     player.queued=false;swordTrail=[];
@@ -270,6 +273,7 @@
     const distance=Math.hypot(p[0]-before[0],(p[1]-before[1])/.74);
     player.moving=distance>.02;
     if(player.moving){
+      window.playerCount?.recordPlay();
       const speed=player.dashTime>0?.063:.108;
       player.walk+=distance*speed;
       const step=Math.floor(player.walk/Math.PI);

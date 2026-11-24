@@ -24,7 +24,16 @@
   <div id="touch"><div class="pad"><button data-move="up" aria-label="Move up">↑</button><button data-move="left" aria-label="Move left">←</button><button data-move="down" aria-label="Move down">↓</button><button data-move="right" aria-label="Move right">→</button></div><div class="touch-actions"><button id="touchDash">Dash</button><button id="touchAttack">Strike</button><button id="touchUse">Use</button></div></div>
   <div id="overlay" hidden><div class="panel"><div class="ornament" aria-hidden="true">─── ◈ ───</div><h2 id="overlayTitle">Watch paused</h2><p id="overlayCopy"></p><button id="resume">Resume watch</button></div></div>
 </section>
-<footer><div class="keys"><span><kbd>WASD</kbd> Move</span><span><kbd>SHIFT</kbd> Dash</span><span><kbd>LMB</kbd> Slash</span><span><kbd>2&times; LMB</kbd> Crossing lunge</span><span><kbd>E</kbd> Interact</span></div><button id="zoom" title="Cycle view (C) or use the mouse wheel"><kbd>C</kbd> <span>Zoom</span></button></footer>
+<footer>
+  <div class="keys"><span><kbd>WASD</kbd> Move</span><span><kbd>SHIFT</kbd> Dash</span><span><kbd>LMB</kbd> Slash</span><span><kbd>2&times; LMB</kbd> Crossing lunge</span><span><kbd>E</kbd> Interact</span></div>
+  <div class="footer-tools">
+    <button id="zoom" title="Cycle view (C) or use the mouse wheel"><kbd>C</kbd> <span>Zoom</span></button>
+    <div id="player-badge" class="player-badge" hidden>
+      <span>Players</span>
+      <strong id="player-total" aria-label="Loading player total">&ndash;</strong>
+    </div>
+  </div>
+</footer>
 </main>
 <dialog id="guide" aria-labelledby="guideTitle">
   <header class="guide-head"><div><small>Reedwater Ferry</small><h2 id="guideTitle">Field guide</h2></div><button id="closeGuide" autofocus>Return to game <kbd>Esc</kbd></button></header>
@@ -40,5 +49,5 @@
     <dl><dt>Move</dt><dd>WASD, arrows or touch pad</dd><dt>Slash / crossing lunge</dt><dd>Click / double-click. Space or the touch Strike button also accepts one or two presses.</dd><dt>Dash</dt><dd>Shift or Dash on touch</dd><dt>Use a fire or gong</dt><dd>E or Use on touch</dd><dt>Camera</dt><dd>C, Zoom, mouse wheel or + / &minus;</dd><dt>Music &amp; footsteps</dt><dd>M or the sound button. Recorded footsteps change between paving and earth. Blade swishes and the dash share this switch.</dd><dt>Pause / resume</dt><dd>Esc or the pause button</dd></dl>
   </details>
 </dialog>
-<audio id="score" src="ashmere.ogg" preload="auto" loop></audio><script src="keeper.js"></script><script src="art.js"></script><script src="guide.js"></script><script src="game.js"></script>
+<audio id="score" src="ashmere.ogg" preload="auto" loop></audio><script src="keeper.js"></script><script src="art.js"></script><script src="guide.js"></script><script src="players.js"></script><script src="game.js"></script>
 </body></html>
