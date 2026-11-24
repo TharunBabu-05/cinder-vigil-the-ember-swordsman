@@ -2,13 +2,36 @@
   'use strict';
   const $=id=>document.getElementById(id),world=$('world'),ctx=world.getContext('2d',{alpha:false}),view=$('view');
   const {project}=Art,rand=Art.random(782),tau=Math.PI*2;
-  const ground=Art.ground(),chapel=Art.chapel(),bowl=Art.brazier();
+  const ground=Art.ground(),gatehouse=Art.gatehouse(),meadow=Art.meadow(),bowl=Art.brazier();
   const trees=[Art.tree(55,112),Art.tree(22,88),Art.tree(87,158)],stones=[1,2,3].map(Art.stone);
   const props=[],obstacles=[],rails=[],flames=[
-    {x:-199,y:125,name:'West watchfire'}, {x:341,y:73,name:'East watchfire'}, {x:207,y:266,name:'Garden watchfire'}
+    {x:-777,y:225,name:'Cedar watchfire'}, {x:755,y:133,name:'Market watchfire'}, {x:127,y:597,name:'Kiln watchfire'}
   ];
   const post=(x,y,sprite,type='scenery')=>props.push({x,y,sprite,type});
-  post(0,0,chapel,'chapel');
+  post(0,0,gatehouse,'gatehouse');
+  const water=[];
+  for(let start=-1600;start<1600;start+=200){
+    const y=Art.riverY(start);water.push({point:project(start,y),sprite:Art.riverSection(start)});
+  }
+  const crossing=Art.bridge();
+  const stalls=['#9d655a','#546c81','#b18a56'].map(Art.stall),furnace=Art.kiln();
+  for(const [i,x] of [600,700,800,900].entries()){
+    post(x,54,stalls[i%3]);obstacles.push([x,48,29]);
+    post(x+13,239,stalls[(i+1)%3]);obstacles.push([x+13,227,29]);
+  }
+  for(const [x,y] of [[52,567],[211,565],[289,605],[-35,633]]){
+    post(x,y,furnace);obstacles.push([x,y,28]);
+  }
+  for(let i=0;i<53;i++){
+    const x=-1010+rand()*445,y=40+rand()*310;
+    if(Math.abs(y-223)<39||Math.abs(x+777)<44)continue;
+    post(x,y,trees[i%3],'tree');obstacles.push([x,y,11]);
+  }
+  for(let i=0;i<28;i++){
+    const x=-995+rand()*1950,y=542+rand()*150;
+    if(Math.abs(x)<330||Math.abs(x-355)<42||Math.abs(x+455)<42)continue;
+    post(x,y,trees[i%3],'tree');obstacles.push([x,y,12]);
+  }
   for(let i=0;i<53;i++){
     const x=-910+i*35+rand()*25,y=-350-rand()*180;
     post(x,y,trees[i%3],'woods');
@@ -30,8 +53,8 @@
   const motes=Array.from({length:65},()=>({x:rand()*1260-610,y:rand()*530-130,z:rand()*48,phase:rand()*tau}));
   let width=0,height=0,dpr=1,fit=1,mode='play',muted=true,audio=null,t=0,last=0,elapsed=0;
   let player,keys=new Set(),wisps=[],sparks=[],paths=[],zoom=1,wantedZoom=1,camX=0,camY=0,shake=0,active=null;
-  const duration={slash:.58,counter:.80};
-  let swordTrail=[],lastPress=-Infinity,stepNoise;
+  const duration={slash:.65,counter:.86};
+  let swordTrail=[],lastPress=-Infinity;
   let intro=true,echoes=[],nextEcho=0,soundChosen=false;
   const score=$('score');score.volume=.65;
   let flashUntil=0,noticeTime=0,initialized=false;
@@ -51,7 +74,7 @@
   function updateHud(){
     const n=flames.filter(f=>f.lit).length;
     $('seals').textContent=flames.map(f=>f.lit?'◆':'◇').join(' ');$('count').textContent=n+' / 3 lit';
-    $('mission').textContent=n===3?'Ring the chapel bell':'Kindle the watchfires';
+    $('mission').textContent=n===3?'Sound the gatehouse gong':'Kindle the watchfires';
     $('health').textContent='◆ '.repeat(player.hp)+'◇ '.repeat(3-player.hp);$('health').setAttribute('aria-label',player.hp+' vitality');
   }
   function notify(msg){$('message').textContent=msg;noticeTime=3.6;$('message').style.opacity='1';}
@@ -62,27 +85,46 @@
     g.gain.setValueAtTime(.0001,when);g.gain.exponentialRampToValueAtTime(volume,when+.012);g.gain.exponentialRampToValueAtTime(.0001,when+duration);
     o.connect(g);g.connect(audio.destination);o.start(when);o.stop(when+duration+.02);
   }
-  function footfall(){
-    if(muted||!audio||audio.state!=='running')return;
-    const grass=player.y>187,soft=player.stepCount%2===0;
-    if(!stepNoise){
-      stepNoise=audio.createBuffer(1,Math.ceil(audio.sampleRate*.23),audio.sampleRate);
-      const samples=stepNoise.getChannelData(0);
-      for(let i=0;i<samples.length;i++)samples[i]=Math.random()*2-1;
+  const effects=new Map(),buffers=new Map(),playing=new Set(),previousStep=new Map();
+  function loadEffects(){
+    if(effects.size)return;
+    const names=['cut','return','finish','dash'];
+    for(const surface of ['stone','sand'])for(const side of ['l','r'])
+      for(let n=1;n<=3;n++)names.push(surface+'-'+side+n);
+    for(const name of names){
+      const url='audio/'+name+'.ogg',element=new Audio();effects.set(name,element);
+      // Web Audio mixes overlapping cloth, blade and foot transients precisely.
+      // Direct file launches use ordinary media elements with local URLs.
+      if(audio&&location.protocol!=='file:'){
+        fetch(url).then(r=>{if(!r.ok)throw Error(r.status);return r.arrayBuffer();})
+          .then(bytes=>audio.decodeAudioData(bytes)).then(buffer=>buffers.set(name,buffer))
+          .catch(()=>{element.src=url;});
+      }else{element.preload='auto';element.src=url;}
     }
-    const shoe=audio.createBufferSource(),filter=audio.createBiquadFilter(),gain=audio.createGain();
-    const now=audio.currentTime,end=grass?.135:.079,level=(soft?.14:.17)*(grass?.79:1);
-    shoe.buffer=stepNoise;shoe.playbackRate.value=.93+Math.random()*.16;
-    filter.type=grass?'bandpass':'lowpass';filter.frequency.setValueAtTime(grass?1280:2050,now);
-    filter.frequency.exponentialRampToValueAtTime(grass?480:330,now+end);
-    gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(level,now+.005);
-    gain.gain.exponentialRampToValueAtTime(.0001,now+end);
-    shoe.connect(filter);filter.connect(gain);gain.connect(audio.destination);shoe.start();shoe.stop(now+end+.01);
-    tone(soft?108:121,grass?.08:.105,grass?.042:.080,'sine',0,47);
+  }
+  function sample(name,volume,rate=1){
+    if(muted||mode!=='play')return;
+    if(audio?.state==='running'&&buffers.has(name)){
+      const source=audio.createBufferSource(),gain=audio.createGain();
+      source.buffer=buffers.get(name);source.playbackRate.value=rate;gain.gain.value=volume;
+      source.connect(gain);gain.connect(audio.destination);playing.add(source);
+      source.onended=()=>{playing.delete(source);source.disconnect();gain.disconnect();};
+      source.start();return;
+    }
+    const channel=effects.get(name);if(!channel)return;
+    if(!channel.hasAttribute('src'))channel.src='audio/'+name+'.ogg';
+    channel.currentTime=0;channel.volume=volume;channel.playbackRate=rate;
+    channel.play().catch(()=>{});
+  }
+  function footfall(){
+    const stone=player.x>=-620&&player.x<=565&&player.y<=188;
+    const shoe=(stone?'stone':'sand')+(player.stepCount%2?'-l':'-r');
+    const variant=((previousStep.get(shoe)||0)+1+Math.floor(rand()*2))%3;
+    previousStep.set(shoe,variant);sample(shoe+(variant+1),stone?.48:.57,.97+rand()*.07);
   }
   function bell(root){[1,2.01,2.72,4.12].forEach((m,i)=>tone(root*m,2.4-i*.32,.14/(i+1)));}
   function syncMusic(){
-    if(muted||mode!=='play'||document.hidden){score.pause();return;}
+    if(muted||mode!=='play'||document.hidden){score.pause();for(const fx of effects.values())fx.pause();for(const source of playing)source.stop();return;}
     score.play().catch(()=>{});
   }
   function toggleSound(){
@@ -90,6 +132,7 @@
     if(!muted){
       const Audio=window.AudioContext||window.webkitAudioContext;
       if(Audio){audio??=new Audio();audio.resume().catch(()=>{});}
+      loadEffects();
     }else if(audio){audio.suspend().catch(()=>{});}
     syncMusic();
     $('sound').textContent=muted?'Sound off':'Sound on';$('sound').setAttribute('aria-label',muted?'Enable music and sound':'Mute music and sound');$('sound').setAttribute('aria-pressed',String(!muted));
@@ -102,9 +145,9 @@
   }
   function modal(state){
     mode=state;syncMusic();clearInput();$('overlay').hidden=false;$('interaction').textContent='';
-    const content={pause:['Watch paused','Three watchfires guard Ashmere. Follow the amber diamonds and kindle each fire, then return to the chapel door.','Resume watch'],
-      lost:['The vigil fades','The shades have taken the yard. The chapel waits for another watch.','Try again'],
-      won:['The bell answers','The three watchfires burn. As the bell sounds over Ashmere, the last of the shades slip into the trees.','Keep another vigil']}[state];
+    const content={pause:['Watch paused','Three watchfires guard Reedwater. Follow the amber diamonds and kindle each fire, then return to the ferry gate.','Resume watch'],
+      lost:['The vigil fades','The shades have taken the yard. The ferry gate waits for another watch.','Try again'],
+      won:['The gong answers','The three watchfires burn. As the gong sounds over Reedwater, the last of the shades slip into the trees.','Keep another vigil']}[state];
     [$('overlayTitle').textContent,$('overlayCopy').textContent,$('resume').textContent]=content;$('resume').focus({preventScroll:true});
   }
   function unpause(){mode='play';syncMusic();$('overlay').hidden=true;world.focus({preventScroll:true});}
@@ -113,7 +156,7 @@
     const [sx,sy]=project(x,y,z);
     for(let i=0;i<n;i++)sparks.push({x:sx,y:sy,dx:(rand()-.5)*36,dy:-9-rand()*28,life:.3+rand()*.7,color,glyph:rand()<.5?'+':'*'});
   }
-  const door={x:Art.doorX,y:18,name:'Chapel bell'};
+  const door={x:Art.doorX,y:22,name:'Gatehouse gong'};
   function nearTarget(){
     const possible=[...flames.filter(f=>!f.lit),door];
     return possible.find(o=>Math.hypot(player.x-o.x,player.y-o.y)<(o===door?43:40))||null;
@@ -121,20 +164,20 @@
   function use(){
     if(mode!=='play')return;
     const target=nearTarget(),n=flames.filter(f=>f.lit).length;
-    if(!target){notify(n===3?'Return to the chapel door.':'Approach a watchfire marked with a diamond.');return;}
+    if(!target){notify(n===3?'Return to the ferry gate.':'Approach a watchfire marked with a diamond.');return;}
     if(target===door){
-      if(n<3){notify('The bell waits for all three watchfires.');return;}
+      if(n<3){notify('The gong waits for all three watchfires.');return;}
       bell(146.8);tone(220,3,.11,'sine',.6);wisps=[];modal('won');return;
     }
     target.lit=true;burst(target.x,target.y,20,32,'#edae60');bell([261.6,329.6,392][n]);updateHud();
-    notify(n===2?'All fires are lit. Return to the chapel bell.':'A shade stirs. Strike with Space to drive it off.');
+    notify(n===2?'All fires are lit. Return to the gatehouse gong.':'A shade stirs. Strike with Space to drive it off.');
     const [sx,sy]=project(target.x+(target.x>300?-80:100),target.y+75);
     wisps.push({x:sx,y:sy,phase:rand()*tau,spawn:1.1});
   }
   function blocked(x,y){
-    if(x< -565||x>555||y<17||y>342)return true;
+    if(x< -1010||x>1000||y<17||y>690)return true;
     if(Math.abs(y-187)<5&&rails.some(([a,b])=>x>a-3&&x<b+3))return true;
-    if(((x+130)/148)**2+((y-358)/72)**2<1)return true;
+    if(Math.abs(y-Art.riverY(x))<38 && !Art.bridgeXs.some(b=>Math.abs(x-b)<21))return true;
     return obstacles.some(([ox,oy,r])=>(x-ox)**2+(y-oy)**2<r*r);
   }
   function move(dx,dy,dt,speed=94){
@@ -163,7 +206,7 @@
     player.cloth.forEach((row,i)=>{
       row.vx-=player.dashX*(i+1)*10;row.vd-=player.dashY*(i+1)*10;
     });
-    burst(player.x,player.y,5,14,'#e4bf8d');tone(175,.18,.07,'triangle',0,37);
+    burst(player.x,player.y,5,14,'#e4bf8d');sample('dash',.72,1.24);
   }
   function strike(angle){
     if(mode!=='play'||player.dashTime>0)return;
@@ -177,30 +220,48 @@
     lastPress=now;player.form='slash';player.attack=duration.slash;
     player.queued=false;swordTrail=[];
   }
-  function cut(wide){
-    tone(wide?330:260,.18,.075,'triangle',0,42);
-    const p=project(player.x,player.y,16);
-    for(let i=wisps.length-1;i>=0;i--){
-      const w=wisps[i],dx=w.x-p[0],dy=w.y-14-p[1],r=Math.hypot(dx,dy);
-      const dot=(-Math.sin(player.angle)*dx+Math.cos(player.angle)*dy)/(r||1);
-      if(r<(wide?55:51)&&(dot>(wide?-.65:.05)||r<18)){
-        for(let j=0;j<24;j++)sparks.push({x:w.x,y:w.y-14,dx:(rand()-.5)*48,dy:(rand()-.65)*45,life:.4+rand()*.6,color:'#e7b995',glyph:'+'});
-        wisps.splice(i,1);shake=2.0;tone(94,.3,.065,'triangle',0,32);
+  function sweepBlade(oldPhase,phase,from,to){
+    const combo=player.form==='counter',windows=combo?[[.18,.46,'return'],[.59,.80,'finish']]:[[.31,.61,'cut']];
+    for(const [start,end,sound] of windows){
+      if(oldPhase<start&&phase>=start)sample(sound,combo?.90:.84,.96+rand()*.08);
+      const lo=Math.max(start,oldPhase),hi=Math.min(end,phase);
+      if(lo>=hi)continue;
+      // Sample the moving blade along the arc, even between rendered frames.
+      const steps=Math.max(1,Math.ceil((hi-lo)*85));
+      for(let j=0;j<=steps;j++){
+        const at=lo+(hi-lo)*j/steps,u=(at-oldPhase)/(phase-oldPhase);
+        const x=from[0]+(to[0]-from[0])*u,y=from[1]+(to[1]-from[1])*u;
+        const {guard,tip}=Keeper.edgePath(player.angle,at,player.form);
+        const gx=x+guard[0],gy=y+guard[1],dx=tip[0]-guard[0],dy=tip[1]-guard[1],len=dx*dx+dy*dy;
+        for(let i=wisps.length-1;i>=0;i--){
+          const w=wisps[i];if(Math.hypot(w.x-x,w.y-y)>73)continue;
+          const hits=[5,14,23].some(h=>{
+            const px=w.x-gx,py=w.y-h-gy;
+            const k=Math.max(0,Math.min(1,(px*dx+py*dy)/(len||1)));
+            return Math.hypot(px-k*dx,py-k*dy)<9;
+          });
+          if(!hits)continue;
+          for(let k=0;k<22;k++)sparks.push({x:w.x,y:w.y-14,dx:(rand()-.5)*63,dy:(rand()-.65)*47,life:.3+rand()*.5,color:'#f4cd9e',glyph:'+'});
+          wisps.splice(i,1);shake=2.2;tone(94,.19,.055,'triangle',0,37);
+        }
+        if(j>0)swordTrail.push({x:gx+dx,y:gy+dy,gx,gy,life:.165,stroke:start});
       }
     }
   }
   function cycleZoom(){intro=false;const levels=[1,2.7,6.6,8];wantedZoom=levels.find(v=>v>wantedZoom+.12)||1;}
   function update(dt){
     t+=dt;elapsed+=dt;player.moving=false;player.cooldown=Math.max(0,player.cooldown-dt);player.invuln=Math.max(0,player.invuln-dt);
-    if(intro&&elapsed>.65){wantedZoom=6.6;intro=false;}
+    if(intro&&elapsed>3.5){wantedZoom=2.7;intro=false;}
     player.dashCooldown=Math.max(0,player.dashCooldown-dt);
     const before=project(player.x,player.y);
     if(player.dashTime>0){
       const portion=Math.min(dt,player.dashTime);
       move(player.dashX,player.dashY,portion,460);
       player.dashTime-=portion;
-    }else if(player.attack>0 && player.form==='counter' && player.attack<.66 && player.attack>.36){
-      move(-Math.sin(player.angle),Math.cos(player.angle),dt,136);
+    }else if(player.attack>0){
+      const phase=1-player.attack/duration[player.form],combo=player.form==='counter';
+      if(combo?(phase>.15&&phase<.47):(phase>.30&&phase<.52))
+        move(-Math.sin(player.angle),Math.cos(player.angle),dt,combo?152:82);
     }else{
       move(Number(keys.has('right'))-Number(keys.has('left')),Number(keys.has('down'))-Number(keys.has('up')),dt);
     }
@@ -220,12 +281,7 @@
       const len=duration[player.form],old=1-player.attack/len;
       player.attack=Math.max(0,player.attack-dt);
       const phase=1-player.attack/len;
-      const impacts=player.form==='counter'?[.32,.72]:[.39];
-      for(const hit of impacts)if(old<hit&&phase>=hit)cut(player.form==='counter');
-      const blade=keeperSprite().blade;
-      if(blade && ((phase>.20&&phase<.62)||(player.form==='counter'&&phase>.63&&phase<.84))){
-        swordTrail.push({x:p[0]+blade.tip[0],y:p[1]+blade.tip[1],gx:p[0]+blade.guard[0],gy:p[1]+blade.guard[1],life:.12});
-      }
+      sweepBlade(old,phase,before,p);
       if(player.attack===0){
         if(player.queued){
           player.queued=false;player.form='counter';player.attack=duration.counter;swordTrail=[];
@@ -268,9 +324,21 @@
     const dashStatus=player.dashCooldown>0?'Recovering':'Dash ready';
     if($('dashLabel').textContent!==dashStatus)$('dashLabel').textContent=dashStatus;
     active=nearTarget();
-    const prompt=active?(active===door?'[ E ]  Ring the chapel bell':'[ E ]  Kindle '+active.name.toLowerCase()):'';
+    const prompt=active?(active===door?'[ E ]  Sound the gatehouse gong':'[ E ]  Kindle '+active.name.toLowerCase()):'';
     if($('interaction').textContent!==prompt)$('interaction').textContent=prompt;
-    const area=player.y>193?'Chapel garden':player.x>280?'East walk':player.x< -245?'West walk':'Chapel yard';
+    const bank=Art.riverY(player.x);
+    const area=Math.abs(player.y-bank)<55?'Reedwater crossing':player.y>bank?'Kiln terrace':player.x>570?'Dyers market':player.x< -560?'Cedar grove':player.y>190?'River meadow':'Lantern court';
+    const goals=flames.some(f=>!f.lit)?flames.filter(f=>!f.lit):[door];
+    const target=goals.reduce((a,b)=>Math.hypot(player.x-a.x,player.y-a.y)<Math.hypot(player.x-b.x,player.y-b.y)?a:b);
+    let waypoint=target,label=target.name;
+    if((player.y-bank)*(target.y-Art.riverY(target.x))<0 && !Art.bridgeXs.some(x=>Math.abs(x-player.x)<21)){
+      const x=Art.bridgeXs.reduce((a,b)=>Math.abs(player.x-a)+Math.abs(target.x-a)<Math.abs(player.x-b)+Math.abs(target.x-b)?a:b);
+      waypoint={x,y:Art.riverY(x)+(player.y<bank?-52:52)};label='Footbridge';
+    }
+    const [dx,dy]=project(waypoint.x-player.x,waypoint.y-player.y);
+    const arrow=['E','SE','S','SW','W','NW','N','NE'][(Math.round(Math.atan2(dy,dx)/(Math.PI/4))+8)%8];
+    const bearing=label+' / '+arrow;
+    if($('bearing').textContent!==bearing)$('bearing').textContent=bearing;
     if($('area').textContent!==area)$('area').textContent=area;
     noticeTime=Math.max(0,noticeTime-dt);if(noticeTime<.45)$('message').style.opacity=String(noticeTime/.45);
   }
@@ -314,12 +382,17 @@
   function hero(x,y){
     for(let i=1;i<swordTrail.length;i++){
       const a=swordTrail[i-1],b=swordTrail[i];
-      if(Math.hypot(a.x-b.x,a.y-b.y)<1)continue;
-      for(let j=0;j<8;j++){
-        const u=j/8,dx=a.x+(b.x-a.x)*u,dy=a.y+(b.y-a.y)*u;
-        ctx.globalAlpha=.72*b.life/.12;
-        glyph(ctx,j%2?'-':'~',dx,dy,player.form==='counter'?'#ffcf86':'#f4e7d1',2.3);
-        ctx.globalAlpha*=.45;glyph(ctx,'.',dx*.83+b.gx*.17,dy*.83+b.gy*.17,'#dab795',2.5);
+      if(a.stroke!==b.stroke||Math.hypot(a.x-b.x,a.y-b.y)<.3)continue;
+      const fade=b.life/.165,color=player.form==='counter'?'#ffc985':'#e4eeec';
+      // Keep the void between arm and blade visible. Only the outer part
+      // of the arc gets a wash, with loose glyphs marking its bright edge.
+      ctx.globalAlpha=.15*fade;ctx.fillStyle=color;ctx.beginPath();
+      ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.lineTo(b.x*.77+b.gx*.23,b.y*.77+b.gy*.23);
+      ctx.lineTo(a.x*.77+a.gx*.23,a.y*.77+a.gy*.23);ctx.closePath();ctx.fill();
+      const span=Math.hypot(a.x-b.x,a.y-b.y),count=Math.ceil(span/1.6);
+      for(let j=0;j<count;j++){
+        const u=j/count,dx=a.x+(b.x-a.x)*u,dy=a.y+(b.y-a.y)*u;
+        ctx.globalAlpha=.88*fade;glyph(ctx,j%3?'-':'+',dx,dy,color,2.15);
       }
     }
     ctx.globalAlpha=1;
@@ -338,15 +411,22 @@
   const backdrop=document.createElement('canvas'),back=backdrop.getContext('2d',{alpha:false});
   let stored=null;
   function paintBackdrop(g,minX,minY,maxX,maxY){
+    for(let y=Math.floor(minY/216)*216;y<maxY;y+=216)
+      for(let x=Math.floor(minX/288)*288;x<maxX;x+=288)Art.draw(g,meadow,x,y);
     Art.draw(g,ground);
+    for(const w of water){
+      const [x,y]=w.point;
+      if(x>minX-280&&x<maxX+80&&y>minY-130&&y<maxY+65)Art.draw(g,w.sprite,x,y);
+    }
+    for(const bx of Art.bridgeXs)Art.draw(g,crossing,...project(bx,Art.riverY(bx)));
     for(const q of props){
       if(q.type!=='woods')continue;
       const [x,y]=project(q.x,q.y),s=q.sprite;
       if(x+s.left+s.w>=minX&&x+s.left<=maxX&&y+s.top+s.h>=minY&&y+s.top<=maxY)Art.draw(g,s,x,y);
     }
     g.fillStyle='rgba(3,4,9,.45)';g.beginPath();
-    [[-369,0],[272,0],[313,37],[-327,37]].forEach(([a,b],i)=>{const p=project(a,b);if(i)g.lineTo(...p);else g.moveTo(...p);});g.fill();
-    Art.draw(g,chapel);
+    [[-194,0],[194,0],[217,30],[-171,30]].forEach(([a,b],i)=>{const p=project(a,b);if(i)g.lineTo(...p);else g.moveTo(...p);});g.fill();
+    Art.draw(g,gatehouse);
   }
   function drawBackdrop(s,minX,minY,maxX,maxY){
     // Reuse the static courtyard while the camera moves inside the overscan.
@@ -385,12 +465,12 @@
       const [x,y]=project(q.x,q.y),sp=q.sprite;
       if(x+sp.left+sp.w<minX||x+sp.left>maxX||y+sp.top+sp.h<minY||y+sp.top>maxY)continue;
       // Depth follows the object's baseline at the actor's horizontal position.
-      const depth=q.type==='chapel'?-100:q.type==='woods'?-600:q.y;
+      const depth=q.type==='gatehouse'?-100:q.type==='woods'?-600:q.y;
       visible.push({depth,paint:()=>{
-        if(q.type!=='chapel')Art.draw(ctx,sp,x,y);
+        if(q.type!=='gatehouse')Art.draw(ctx,sp,x,y);
         if(q.type.startsWith('fire'))fire(x,y,Number(q.type.slice(4)));
-        if(q.type==='chapel'){
-          for(const lamp of [-347,64,148,252]){const [lx,ly]=project(lamp,8,62);glow(lx,ly,19,'#e6a265',.11+.025*Math.sin(t*4+lamp));}
+        if(q.type==='gatehouse'){
+          for(const lamp of [-166,-82,82,166]){const [lx,ly]=project(lamp,15,78);glow(lx,ly,19,'#e6a265',.11+.025*Math.sin(t*4+lamp));}
           if(flames.every(f=>f.lit)){const p=project(door.x,6,107);marker(...p,true);}
         }
       }});

@@ -118,71 +118,116 @@ const Art = (() => {
     }
     pts.push([x+width/2,y,base]);face(c,pts,fill);
   }
-  const doorX=106;
-  function chapel(){
-    const rand=random(43),a=-366,b=265,back=-142,h=125,ridge=220;
-    return glyphSprite([-380,-389,775,487],1.38,c=>{
-      box(c,a-5,back-4,0,b-a+11,150,9,'#656064','#262431','#68616b');
-      box(c,a,back,9,b-a,-back,h-9,'#51515a','#31313e','#42424e');
-      // Individually cut stones follow the slant of the facade.
-      for(let row=0;row<13;row++)for(let x=a-(row%2)*12;x<b;x+=24){
-        const l=Math.max(a,x),r=Math.min(b,x+22);if(l>=r)continue;
-        const k=39+rand()*42;face(c,[[l,.2,10+row*9],[r,.2,10+row*9],[r,.2,17.6+row*9],[l,.2,17.6+row*9]],rgb(k,k*.98,k*1.06));
-        edge(c,[l+1,.4,17+row*9],[r-1,.4,17+row*9],rgb(k+11,k+10,k+14),.8);
-        if(rand()<.25)edge(c,[l+3,.4,16+row*9],[l+7,.4,12+row*9],'#35323c',1.1);
-      }
-      for(const x of [-305,-206,-107,-8,201]){
-        arch(c,x,57,89,18,1,'#252630');arch(c,x,51,85,19,2,'#9c8a78');
-        arch(c,x,46,80,21,3,'#201c26');arch(c,x,40,74,24,4,'#df9956');
-        for(let j=-16;j<=16;j+=8){
-          const height=64+14*Math.cos(j/20*Math.PI/2);
-          edge(c,[x+j,5,24],[x+j,5,height+17],'#5d493e',2.5);
+  const doorX=0,bridgeXs=[-455,355],riverY=x=>410+24*Math.sin(x/248);
+  function gatehouse(){
+    return glyphSprite([-287,-382,665,470],1.32,c=>{
+      const timber='#9c4a35',red='#b96243',dark='#49302e',gold='#d1a369';
+      function roof(x,y,width,depth,z,rise){
+        const ridge=y-depth*.53;
+        const eave=u=>z+19*(Math.abs(2*u-1)**4);
+        const pos=(u,v)=>[x+u*width+(u-.5)*(-28)*v,y+(ridge-y)*v,eave(u)+rise*(v**1.5)];
+        for(let i=0;i<44;i++)for(let j=0;j<9;j++){
+          const u=i/44,v=j/9,k=41+14*v+noise(i,j)*21;
+          face(c,[pos(u,v),pos((i+1)/44,v),pos((i+1)/44,(j+1)/9),pos(u,(j+1)/9)],rgb(k*.82,k*1.04,k*1.14));
+          edge(c,pos(u,v),pos(u,(j+1)/9),'#7e9091',1.5);
         }
-        for(let z=34;z<85;z+=11)edge(c,[x-18,5,z],[x+18,5,z],'#8e6550',1.7);
-        edge(c,[x,6,24],[x,6,95],'#35313b',3);
-        box(c,x-29,0,15,58,6,4,'#77717a','#49454c','#a58e7b');
+        for(let i=0;i<44;i++){
+          edge(c,pos(i/44,0),pos((i+1)/44,0),'#d0a26a',3.5);
+          edge(c,pos(i/44,1),pos((i+1)/44,1),'#aba99d',3.0);
+        }
+        face(c,[pos(1,0),pos(1,1),[x+width,y-depth,z+16]],'#524b4e');
+        edge(c,pos(1,1),[x+width,y-depth,z+16],'#88857a',2.5);
       }
-      arch(c,doorX,66,106,8,1,'#8c7b71');arch(c,doorX,56,99,8,2,'#201f29');
-      for(let j=-22;j<=22;j+=6)edge(c,[doorX+j,3,9],[doorX+j,3,92-Math.abs(j)*.7],'#50444a',2);
-      for(const z of [30,66])edge(c,[doorX-23,4,z],[doorX+23,4,z],'#756670',3);
-      edge(c,[doorX,5,10],[doorX,5,96],'#211f29',2);
-      box(c,doorX-37,1,0,74,13,5,'#695f66','#37343c','#928188');
-      for(const x of [a,-257,-158,-59,46,159,b-6]){
-        box(c,x-4,0,8,8,4,111,'#726b70','#393542','#969097');
-        box(c,x-6,2,7,12,7,15,'#625d62','#342f39','#807881');
+      // An open timber landing, suspended gong and a second storey with paper screens.
+      box(c,-193,-104,0,386,116,10,'#716565','#4c474d','#938477');
+      for(let j=0;j<3;j++)box(c,-54,11+j*6,0,108,7,9-j*3,'#726961','#49484a','#a39984');
+      for(const x of [-175,-83,83,175]){
+        box(c,x-7,-87,10,14,13,98,dark,'#392a2b',gold);
+        box(c,x-9,-1,10,18,13,6,'#887c71','#635851','#a29176');
+        box(c,x-6,1,16,12,10,91,red,timber,gold);
+        box(c,x-13,0,94,26,15,8,timber,dark,gold);
       }
-      // The east gable has its own rose window and tracery.
-      face(c,[[b,0,h],[b,back,h],[b,back/2,ridge]],'#454350');
-      const [wx,wy]=project(b+1,-71,91);
-      oval(c,wx,wy,18,23,'#82776f',.24);oval(c,wx,wy,14,19,'#c88951',.24);
-      for(let j=0;j<8;j++){let an=j*Math.PI/4;line(c,[wx,wy],[wx+Math.cos(an)*14,wy+Math.sin(an)*18],'#554347',2);}
-      face(c,[[a-10,back/2,ridge],[b+10,back/2,ridge],[b+10,7,h],[a-10,7,h]],'#3a4053');
-      for(let row=0;row<15;row++){
-        const t=row/15,nt=(row+1)/15,y=back/2+(7-back/2)*t,z=ridge+(h-ridge)*t;
-        for(let x=a-10-(row%2)*9;x<b+10;x+=18){
-          const l=Math.max(a-10,x),r=Math.min(b+10,x+17);if(l>=r)continue;
-          const k=36+rand()*21+12*(1-t);
-          face(c,[[l,y,z],[r,y,z],[r,back/2+(7-back/2)*nt,ridge+(h-ridge)*nt+1],[l,back/2+(7-back/2)*nt,ridge+(h-ridge)*nt+1]],rgb(k*.88,k*.98,k*1.26));
+      box(c,-192,-7,103,384,20,13,timber,dark,'#bf7955');
+      for(const x of [-143,116]){
+        box(c,x,-54,19,53,6,71,'#b58f67','#6c4c3e','#a4704d');
+        for(let i=0;i<6;i++)edge(c,[x+i*10,-47,20],[x+i*10,-47,89],dark,2.1);
+        for(let i=0;i<7;i++)edge(c,[x,-47,22+i*10],[x+53,-47,22+i*10],dark,1.8);
+      }
+      const [gx,gy]=project(doorX,-7,63);
+      edge(c,[-19,-6,100],[-10,-6,83],'#998563',2);edge(c,[19,-6,100],[10,-6,83],'#998563',2);
+      oval(c,gx,gy,24,26,'#7b6552',.22);oval(c,gx,gy,21,23,'#ccb079',.22);oval(c,gx,gy,17,19,'#85734f',.22);oval(c,gx,gy,7,8,'#d6b681');
+      roof(-228,27,456,169,119,54);
+      box(c,-123,-103,158,246,82,49,'#bd936a','#87654a','#aa815b');
+      for(let x=-120;x<123;x+=15)box(c,x,-25,160,4,5,47,timber,dark,gold);
+      for(const z of [167,183,201])edge(c,[-124,-18,z],[124,-18,z],timber,3.2);
+      roof(-162,-3,324,132,211,49);
+      for(const x of [-166,-82,82,166]){
+        const [lx,ly]=project(x,15,78);
+        edge(c,[x,15,102],[x,15,85],gold,1.2);
+        oval(c,lx,ly,7,10,'#ffb26e');for(let i=-6;i<=6;i+=4)line(c,[lx-5,ly+i],[lx+5,ly+i+1],'#bd6951',1);
+        line(c,[lx,ly+9],[lx,ly+17],red,1.5);
+      }
+      for(const x of [-64,42]){
+        face(c,[[x,14,103],[x+21,14,103],[x+19,15,81],[x+9,15,84],[x,14,80]],'#50697e');
+        edge(c,[x+4,15,99],[x+15,15,88],gold,1.6);
+      }
+    });
+  }
+  function stall(color){
+    return glyphSprite([-42,-100,116,120],1.55,c=>{
+      for(const x of [-28,28])for(const y of [-27,2])box(c,x-2,y-2,0,4,4,54,'#896447','#4b3940','#aa8764');
+      box(c,-30,-24,15,60,28,5,'#896d52','#5d4942','#ba9b73');
+      for(let i=0;i<9;i++){
+        const x=-36+i*8;
+        face(c,[[x,-32,63],[x+8,-32,63],[x+8,10,47],[x,10,47]],i%3?color:'#a89571');
+        face(c,[[x,10,47],[x+8,10,47],[x+8,10,41],[x+2,10,39]],i%3?color:'#aa9372');
+      }
+      for(let i=0;i<6;i++)box(c,-24+i*8,-13,20,6,12,4+(i%3)*2,i%2?'#918eaa':color,'#68534e','#bc9b7d');
+    });
+  }
+  function kiln(){
+    return glyphSprite([-43,-98,92,118],1.5,c=>{
+      oval(c,0,0,36,11,'#766258');oval(c,0,-14,33,25,'#a66e50');
+      box(c,6,-16,22,10,12,42,'#996748','#674d43','#a88361');
+      for(let j=0;j<4;j++)line(c,[-29+j,-3-j*7],[24-j,-3-j*7],'#855c4f',1.5);
+      oval(c,0,-7,12,12,'#3e3031');oval(c,0,-5,8,7,'#ee9a53');
+    });
+  }
+  function meadow(){
+    return glyphSprite([0,0,288,216],3.5,c=>{
+      const rand=random(569);
+      c.fillStyle='#26332f';c.fillRect(0,0,288,216);
+      for(let i=0;i<3700;i++){
+        const x=rand()*288,y=rand()*216,k=23+rand()*54;
+        line(c,[x,y],[x+rand()*4-2,y-2-rand()*5],rgb(k*.88,k*1.11,k*.98),1+rand()*1.6);
+      }
+    },'ground');
+  }
+  function riverSection(start){
+    const width=200,bank=riverY(start),[px,py]=project(start,bank);
+    return glyphSprite([-70,-58,340,180],2.7,c=>{
+      c.translate(-px,-py);
+      for(let i=0;i<20;i++){
+        const a=start+i*10,b=a+10,ya=riverY(a),yb=riverY(b);
+        for(const [half,col] of [[43,'#776d52'],[39,'#395053'],[33,'#244147']])
+          face(c,[[a,ya-half,0],[b,yb-half,0],[b,yb+half,0],[a,ya+half,0]],col);
+        const rand=random((a+4500)*751);
+        for(let j=0;j<14;j++){
+          const x=a+rand()*10,y=riverY(x)+(rand()-.5)*65;
+          edge(c,[x,y,0],[x+rand()*9+2,y,0],j%4?'#486063':'#7a8d80',1.1);
         }
       }
-      edge(c,[a-10,back/2,ridge],[b+10,back/2,ridge],'#99939a',3);
-      edge(c,[a-10,7,h],[b+10,7,h],'#817c84',3);
-      edge(c,[b+10,7,h],[b+10,back/2,ridge],'#676c7d',3);
-      edge(c,[b+10,back/2,ridge],[b+10,back-3,h],'#494b59',4);
-      // A small open belfry rises above the west end.
-      const tx=-179,ty=-68,tz=209;
-      box(c,tx-17,ty-14,tz,34,28,7,'#686674','#444350','#94909b');
-      for(const x of [-13,13])for(const y of [-10,10])edge(c,[tx+x,ty+y,tz+5],[tx+x,ty+y,tz+39],'#91838a',3);
-      const [bx,by]=project(tx,ty,tz+20);
-      poly(c,[[bx-4,by-7],[bx+4,by-7],[bx+7,by+4],[bx+9,by+6],[bx-9,by+6],[bx-6,by+2]],'#b79b70');
-      box(c,tx-17,ty-14,tz+38,34,28,4,'#605e69','#3f3e49','#74717c');
-      face(c,[[tx-21,ty+17,tz+42],[tx+21,ty+17,tz+42],[tx,ty,tz+68]],'#737482');
-      face(c,[[tx+21,ty+17,tz+42],[tx+21,ty-17,tz+42],[tx,ty,tz+68]],'#454753');
-      edge(c,[tx,ty,tz+66],[tx,ty,tz+83],'#b4a18c',2);edge(c,[tx-5,ty,tz+77],[tx+5,ty,tz+77],'#b4a18c',2);
-      for(const x of [-347,64,148,252]){
-        box(c,x-2,1,53,4,7,5,'#6a5d55','#3c3432','#716251');
-        const [sx,sy]=project(x,8,62);poly(c,[[sx-4,sy-7],[sx+4,sy-7],[sx+3,sy+5],[sx-3,sy+5]],'#f7bc79');
-        line(c,[sx-5,sy-7],[sx+5,sy-7],'#a78b6e',2);
+    },'ground');
+  }
+  function bridge(){
+    return glyphSprite([-82,-47,167,108],1.4,c=>{
+      for(let j=0;j<18;j++){
+        const y=-53+j*6,k=89+noise(j,4)*34;
+        box(c,-23,y,0,46,5.8,2,rgb(k,k*.82,k*.67),'#54483e',rgb(k,k*.86,k*.72));
+      }
+      for(const x of [-24,24]){
+        for(const y of [-51,0,51])box(c,x-1.6,y,0,3.2,3,15,'#8e7960','#57483c','#b39c7c');
+        edge(c,[x,-51,13],[x,52,13],'#b29572',2);
       }
     });
   }
@@ -207,12 +252,7 @@ const Art = (() => {
   }
   function ground(){
     const rand=random(151);
-    return glyphSprite([-1130,-710,2290,1450],3.5,c=>{
-      c.fillStyle='#232c2d';c.fillRect(-1130,-710,2290,1450);
-      for(let i=0;i<114000;i++){
-        let x=rand()*2290-1130,y=rand()*1450-710,k=20+rand()*36+7*Math.sin(x/33+y/20);
-        line(c,[x,y],[x+rand()*5-2.5,y-2-rand()*5],rgb(k*.94,k*1.06,k*1.04),1.3+rand()*1.8);
-      }
+    return glyphSprite([-808,-193,1485,610],3.5,c=>{
       face(c,[[-620,-8,0],[565,-8,0],[565,188,0],[-620,188,0]],'#504b51');
       for(let row=0;row<20;row++)for(let x=-624-(row%2)*11;x<565;x+=22){
         const l=Math.max(-620,x),r=Math.min(565,x+21);if(r<=l)continue;
@@ -222,7 +262,7 @@ const Art = (() => {
       }
       // Pools of window light break across individual paving stones.
       c.save();c.globalCompositeOperation='screen';
-      for(const wx of [-305,-206,-107,-8,201]){
+      for(const wx of [-166,-82,82,166]){
         for(let j=0;j<135;j++){
           const y=rand()*86,x=wx+(rand()-.5)*(38+y*.65)+y*.19;
           c.globalAlpha=(1-y/90)*(.09+rand()*.21);
@@ -232,13 +272,6 @@ const Art = (() => {
       c.restore();
       for(const [x,y] of [[-34,202],[375,207],[328,238],[300,271],[277,299]]){
         const p=project(x,y);oval(c,...p,17,4,'#5f5b58',.2);
-      }
-      const [px,py]=project(-130,358);
-      oval(c,px,py,144,48,'#444d49',.18);oval(c,px,py,137,44,'#1b282b',.18);
-      for(let i=0;i<200;i++){
-        const a=rand()*6.283,r=Math.sqrt(rand()),dx=r*Math.cos(a)*123,dy=r*Math.sin(a)*37;
-        const x=px+dx,y=py+dy+dx*.17,k=20+rand()*30;
-        line(c,[x,y],[x+rand()*12,y],rgb(k*.75,k,k*1.12),1);
       }
       for(let i=0;i<360;i++){
         let x=rand()*1200-560,y=195+rand()*150,p=project(x,y),k=46+rand()*40;
@@ -271,5 +304,5 @@ const Art = (() => {
       for(let x=-6;x<=6;x+=4)line(c,[x,-19],[x+3,-23],'#c18a5d',2);
     });
   }
-  return {project,draw,ground,chapel,tree,fence,stone,brazier,pilgrim:Keeper.draw,random,doorX};
+  return {project,draw,ground,gatehouse,meadow,riverSection,riverY,bridgeXs,bridge,stall,kiln,tree,fence,stone,brazier,pilgrim:Keeper.draw,random,doorX};
 })();

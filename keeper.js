@@ -1,8 +1,8 @@
 /* A small depth buffer resolves overlapping garment panels, sleeves, brim and blade
    before each visible surface sample is printed as one character. */
 const Keeper = (() => {
-  const TAU=Math.PI*2, cell=.58, leading=.86, left=-66, top=-84;
-  const cols=230, rows=125, cw=7, ch=10;
+  const TAU=Math.PI*2, cell=.58, leading=.86, left=-80, top=-103;
+  const cols=280, rows=157, cw=7, ch=10;
   const depth=new Float32Array(cols*rows), light=new Float32Array(depth.length);
   const mat=new Uint8Array(depth.length), tex=new Uint32Array(depth.length);
   const canvas=document.createElement('canvas');canvas.width=cols*cw;canvas.height=rows*ch;
@@ -16,15 +16,15 @@ const Keeper = (() => {
   const sprite={left,top,w:cols*cell,h:rows*leading,levels:[canvas],shadow};
   const palettes=[
     // Ink colours run from recessed folds through to moonlit edges.
-    ['robe', [28,29,35],[237,230,215],'.:;irsxzZS2HNM@'],
+    ['robe', [20,28,43],[188,210,218],'.:;irsxzZS2HNM@'],
     ['lining',[29,24,35],[157,142,147],'.:;ijtfzZSHM'],
-    ['trousers',[18,20,26],[159,164,166],'.:;i|/tzZnNH'],
+    ['trousers',[19,23,38],[145,155,186],'.:;i|/tzZnNH'],
     ['straw',[35,32,34],[246,238,221],'.:,;/txwWmM#@'],
     ['binding',[29,28,33],[208,197,180],'.:;+szSZ8HX'],
-    ['steel',[53,49,57],[255,224,202],'.:!/tYAHMW@'],
+    ['steel',[48,59,72],[252,250,235],'.:!/tYAHMW@'],
     ['brass',[59,39,31],[255,199,117],'.:;xjZ8#@'],
     ['skin',[38,32,38],[183,157,137],'.:;+jxsSHN'],
-    ['silk',[30,26,34],[226,202,185],'.:;ifsSZHNM']
+    ['silk',[53,30,35],[234,167,119],'.:;ifsSZHNM']
   ];
   const atlases=palettes.map(([,lo,hi,letters])=>{
     const a=document.createElement('canvas');a.width=cw*letters.length;a.height=ch*32;
@@ -86,8 +86,8 @@ const Keeper = (() => {
   // Time, blade yaw, blade elevation, body turn and extension. Both cuts
   // return to the same guard so a queued follow-up can start seamlessly.
   const forms={
-    slash:[[0,.30,-.11,0,0],[.20,-.95,.85,-.60,.45],[.58,2.85,-.45,.62,1],[.72,3.05,-.50,.59,.96],[1,.30,-.11,0,0]],
-    counter:[[0,.30,-.11,0,0],[.17,2.85,-.57,.64,.55],[.46,-.65,.75,-.71,1],[.60,-.82,1.04,-.58,.80],[.82,2.80,-.38,.83,1],[1,.30,-.11,0,0]]
+    slash:[[0,.20,.06,0,0],[.23,-.67,1.00,-.55,.32],[.34,-.76,.96,-.62,.53],[.57,2.82,-.28,.59,1],[.72,3.01,-.33,.72,.94],[1,.20,.06,0,0]],
+    counter:[[0,.20,.06,0,0],[.18,2.64,-.36,.56,.52],[.44,-.45,.85,-.58,1],[.58,-.55,1.15,-.50,.78],[.77,2.36,-.54,.76,1],[.89,2.65,-.46,.66,.80],[1,.20,.06,0,0]]
   };
   function bladePose(kind,p){
     const frames=forms[kind]||forms.slash;
@@ -96,6 +96,20 @@ const Keeper = (() => {
     const a=frames[j-1],b=frames[j],v=(p-a[0])/(b[0]-a[0]),ease=v*v*(3-2*v);
     return a.slice(1).map((x,i)=>x+(b[i+1]-x)*ease);
   }
+  const bladeLength=52,bladeCurve=6.1;
+  function grip(turn,extension,lift,gait){
+    return [7.7-Math.max(turn,0)*9+extension*1.2,3.0-gait*2.8+extension*8.2,24.8+extension*4.5+Math.max(0,lift-.06)*9];
+  }
+  function edgePath(angle,phase,kind){
+    const [yaw,lift,turn,extension]=bladePose(kind,phase);
+    const [s,f,z]=grip(turn,extension,lift,0),a=angle+turn;
+    function projected(length,curve){
+      const reach=length*Math.cos(lift)-curve*Math.sin(lift);
+      const side=s+Math.cos(yaw)*reach,forward=f+Math.sin(yaw)*reach;
+      return [side*Math.cos(a)-forward*Math.sin(a),(side*Math.sin(a)+forward*Math.cos(a))*.47-z-length*Math.sin(lift)-curve*Math.cos(lift)];
+    }
+    return {guard:projected(3.1,0),tip:projected(5.1+bladeLength,bladeCurve+1.03)};
+  }
   let lastTime=-1,lastChain=null;
   function draw(angle,stride,swing,time,chain,dash,walking,kind){
     if(chain===lastChain&&time>=lastTime&&time-lastTime<1/34)return sprite;
@@ -103,13 +117,18 @@ const Keeper = (() => {
     const [bladeYaw,elevation,turn,extend]=bladePose(kind,swing);
     angle+=turn;
     const ca=Math.cos(angle),sa=Math.sin(angle),gait=walking?Math.sin(stride):0;
-    const bob=Math.abs(gait)*.85+.17*Math.sin(time*2.1);
+    const bob=-extend*2.4+Math.abs(gait)*.85+.17*Math.sin(time*2.1);
     const cos=Math.cos,sin=Math.sin,stitches=[];
     function stitching(p,tangent,letter,tint,size=1){
       stitches.push({p,tangent,letter,tint,size});
     }
     function point(s,f,z,l,u,v,windX=0,windD=0){
       f+=dash*(z/54)*16;z-=dash*(z/54)*10;
+      // Feet plant while the upper body carries the cut across the hips.
+      if(extend && z<25){
+        const untwist=-turn*(1-clamp(z/25)),cc=cos(untwist),ss=sin(untwist);
+        [s,f]=[s*cc-f*ss,s*ss+f*cc];s+=Math.sign(s)*extend*1.8;
+      }
       const x=s*ca-f*sa+windX,d=s*sa+f*ca+windD;
       return [(x-left)/cell,(d*.47-z-bob-top)/leading,d+.47*z,l,u,v];
     }
@@ -154,6 +173,10 @@ const Keeper = (() => {
           const value=Math.round(113+116*clamp(shade));
           stitching(p,tangent,col%3?'s':'Z','rgb('+value+','+(value-4)+','+(value-12)+')',1.18);
         }
+        if(q>.69&&q<.97&&sin(a+angle)>.04){
+          const wave=(col%8)-4,arc=Math.round(Math.sqrt(Math.max(0,16-wave*wave))*.59);
+          if(row===19+arc||row===22+arc)stitching(p,0,col%2?'c':'~','#d9af79',1.15);
+        }
         return p;
       },0);
     }
@@ -167,6 +190,17 @@ const Keeper = (() => {
       },4);
     }
     rings([[25.1,0,0,6.4,5.3],[25.7,0,0,6.6,5.4],[27.5,0,0,6.45,5.25],[28.2,0,0,6.4,5.2]],4,(a,v)=>.17*cos(18*a+v*14));
+    // A braided belt cord wraps over the obi and ties in two raised loops.
+    rings([[26.2,0,0,6.62,5.51],[26.9,0,0,6.75,5.55],[27.3,0,0,6.61,5.51]],6,(a,v)=>.25*cos(a*30+v*6));
+    for(const sign of [-1,1])sheet(14,4,(u,v)=>{
+      const a=u*TAU;return point(1+sign*(1.6+1.7*cos(a)),5.65+v*.5,26.5+sin(a)*1.18+v*.55,.58+.27*cos(a),u*12,v*4);
+    },6);
+    // Lacquered scabbard at the opposite hip, with a brass cap and cord bands.
+    sheet(18,22,(u,v)=>{
+      const a=u*TAU,band=v<.07||v>.94;
+      return point(-6.4-.82*v+cos(a)*.93,-2-22*v+sin(a)*1.14,25-13*v+.7*v*v,
+        band?.89:.26+.11*cos(a)+.12*cos(v*32),u*18,v*38);
+    },4);
     // Two independently curling sash ends stream from the knot at the back.
     for(const sign of [-1,1]){
       sheet(4,21,(u,q)=>{
@@ -179,23 +213,32 @@ const Keeper = (() => {
     }
     rings([[38.4,0,0,3.7,3.6],[41.8,0,0,3.8,3.8],[45,0,.3,4.1,4.2],[47.4,0,0,3.9,3.8]],7,(a,v)=>v>.48?-.13:0);
     rings([[38.5,0,0,4.3,4.1],[40.2,0,.2,4.1,4.15],[42,0,.3,4.2,4.05]],1,(a,v)=>.16*cos(v*10+a));
-    let hand;
+    const hand=grip(turn,extend,elevation,gait);
+    const tilt=sin(elevation),reach=cos(elevation),ux=cos(bladeYaw),uf=sin(bladeYaw);
     for(const sign of [-1,1]){
-      const attack=sign===1?extend:0;
-      const handS=sign*(8.1+4.7*attack),handF=2.7-sign*gait*2.8+attack*5;
-      const handZ=23.7+attack*7+sign*gait*.8;
+      let [handS,handF,handZ]=hand;handZ-=1;
+      if(sign<0){
+        const join=clamp(extend*2.8);
+        handS=(-8.2)*(1-join)+(hand[0]-5.6*reach*ux)*join;
+        handF=(2.5+gait*2.8)*(1-join)+(hand[1]-5.6*reach*uf)*join;
+        handZ=23.8*(1-join)+(hand[2]-5.6*tilt-1)*join;
+      }
       rings([[handZ,handS,handF,1.4,1.6],[handZ+1.8,handS,handF,1.8,1.65],[handZ+3.8,handS,handF,1.45,1.45]],7);
       sheet(24,14,(u,q)=>{
         const a=u*TAU,rad=2.5+.9*sin(q*Math.PI)+q*.5,wrinkle=cos(a*4+q*6+gait);
         const w=breeze(q*q*.42);
-        return point(sign*6+(handS-sign*6)*q+rad*cos(a),
+        const p=point(sign*6+(handS-sign*6)*q+rad*cos(a)+sign*sin(q*Math.PI)*extend*2.2,
           handF*q+rad*.94*sin(a),37.4+(handZ+2.8-37.4)*q+q*.6*wrinkle,
           illumination(a,.18*wrinkle+.11*cos(28*q+a)),u*31,q*20,...w);
+        const row=Math.round(q*14),col=Math.round(u*24);
+        if((row===11||row===13||((col+row)%5===0&&row<7))&&sin(a+angle)>.1)
+          stitching(p,.18*sign,row>10?'=':'x',row>10?'#e7bd88':'#ced2c3',1.1);
+        return p;
       },0);
-      if(sign===1)hand=[handS,handF,handZ+1];
+
     }
     const [hs,hf,hz]=hand;
-    const ux=cos(bladeYaw),uf=sin(bladeYaw),tilt=sin(elevation),reach=cos(elevation);
+
     function sword(length,height,thickness=0){
       const horizontal=length*reach-height*tilt;
       return [hs+ux*horizontal-uf*thickness,hf+uf*horizontal+ux*thickness,hz+length*tilt+height*reach];
@@ -208,17 +251,17 @@ const Keeper = (() => {
         return point(...sword(f,tall*cos(a),thick*sin(a)),.54+.23*cos(a)+binding,u*20,v*26);
       },material);
     }
-    fitting(-6.9,2.2,1.15,.88,4,true);fitting(-7.3,-6.6,1.28,1.04,6,false);
-    fitting(2.2,3.1,3.2,2.8,6,false);fitting(3.1,5.1,1.35,.65,6,false);
+    fitting(-8.2,2.2,1.28,1.02,4,true);fitting(-8.9,-8.1,1.43,1.12,6,false);
+    fitting(2.2,3.1,3.9,3.3,6,false);fitting(3.1,5.1,1.35,.65,6,false);
     sheet(6,42,(u,v)=>{
-      const curve=4.6*v*v,tip=clamp((v-.86)/.14);
-      const width=(2.7-.56*v)*(1-tip);
-      const h=curve+(u-.5)*width+tip*.88;
+      const curve=bladeCurve*v*v,tip=clamp((v-.89)/.11);
+      const width=(3.65-.78*v)*(1-tip);
+      const h=curve+(u-.5)*width+tip*1.03;
       const bevel=1-Math.abs(u-.6)/.6;
       const temper=u<.31+.08*sin(v*42)? .36:0;
-      return point(...sword(5.1+39*v,h,.12+.42*bevel),.47+temper+.22*bevel+.10*cos(v*9),u*9,v*80);
+      return point(...sword(5.1+bladeLength*v,h,.12+.42*bevel),.62+temper+.27*bevel+.11*cos(v*9),u*9,v*80);
     },5);
-    const tip=point(...sword(44.1,5.48),1,0,0),guard=point(...sword(3.1,0),1,0,0);
+    const tip=point(...sword(5.1+bladeLength,bladeCurve+1.03),1,0,0),guard=point(...sword(3.1,0),1,0,0);
     sprite.blade={tip:[tip[0]*cell+left,tip[1]*leading+top],guard:[guard[0]*cell+left,guard[1]*leading+top]};
     // Woven rings follow the shallow cone. The raised lip catches a narrow
     // continuous highlight against the black underside.
@@ -276,5 +319,5 @@ const Keeper = (() => {
     ink.setTransform(1,0,0,1,0,0);
     return sprite;
   }
-  return {draw,motion,advance};
+  return {draw,motion,advance,edgePath};
 })();

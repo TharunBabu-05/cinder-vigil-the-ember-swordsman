@@ -1,12 +1,14 @@
-﻿# Cinder Vigil — The Ember Swordsman
+# Cinder Vigil — The Ember Swordsman
 
-A lone swordsman keeps watch at Ashmere Chapel. Three watchfires have gone dark. Cross the courtyard, kindle them, and survive long enough to ring the bell.
+A lone swordsman keeps watch at Reedwater Ferry. Three fires have gone dark. Leave the lantern gatehouse, kindle the fires in the cedar grove, dyers' market and kiln terrace, then return to sound the hanging gong.
 
 A **cinder** is a piece of fuel still glowing after a fire burns down. A **vigil** is a watch kept through the night. *Cinder Vigil* names the watch. *The Ember Swordsman* names the keeper you play.
 
 ## Play
 
-Download and extract the repository ZIP or clone the repository. Open **index.html** in a modern browser. The game, score, and field guide run locally. On Windows, launch it from the project folder with:
+[Play Cinder Vigil on GitHub Pages](https://tharunbabu-05.github.io/cinder-vigil-the-ember-swordsman/).
+
+For offline play, download and extract the repository ZIP or clone the repository. Open **index.html** in a modern browser. The game, score, and field guide run locally. On Windows, launch it from the project folder with:
 
 ```powershell
 Start-Process .\index.html
@@ -24,8 +26,8 @@ These GIFs were captured from the playable game. Open **Field guide** in the hea
 | The keeper up close | Walking and turning |
 | --- | --- |
 | ![Close view of the keeper, curved blade and wind-blown robe](media/close.gif) | ![The keeper reverses direction and the hem swings after the turn](media/walk.gif) |
-| **Chapel grounds** | **Shadow step** |
-| ![Wide view of the chapel windows, courtyard and three watchfires](media/yard.gif) | ![A burst of movement leaves a trail of fading silhouettes](media/dash.gif) |
+| **Reedwater Ferry** | **Shadow step** |
+| ![Wide view of the two-storey lantern gatehouse, courtyard and river](media/yard.gif) | ![A burst of movement leaves a trail of fading silhouettes](media/dash.gif) |
 | **Crescent slash · one click** | **Crossing lunge · two clicks** |
 | ![One complete aimed katana slash and recovery](media/slash.gif) | ![Opening slash followed by an advancing return cut and descending finish](media/combo.gif) |
 
@@ -37,7 +39,7 @@ These GIFs were captured from the playable game. Open **Field guide** in the hea
 | Crescent slash | Left-click to aim, or Space to strike in the facing direction | Tap Strike |
 | Crossing lunge | Double-click, or press Space twice | Double-tap Strike |
 | Dash | Shift with a direction, or Shift to dash forward | Dash with the pad, or Dash alone |
-| Kindle a fire or ring the bell | E near the target | Use |
+| Kindle a fire or sound the gong | E near the target | Use |
 | Camera | C to cycle, mouse wheel or + / − to fine-tune | Zoom |
 | Music and sound | M or the sound button | Sound button |
 | Pause and resume | Esc or the pause button | Pause / Resume |
@@ -45,8 +47,13 @@ These GIFs were captured from the playable game. Open **Field guide** in the hea
 
 ## The night watch
 
-Each lit watchfire wakes a shade. Watch your three vitality marks and the dash recovery meter. Use the gaps in the fence to reach the garden. Once all three fires burn, return to the chapel door and ring the bell.
+Each watchfire wakes a shade. Follow the bearing below the objective, and watch the dash meter for your next burst. The river separates the market and grove from the kiln terrace. Cross at either timber footbridge. When all three fires burn, return to the bronze gong in the ferry gatehouse.
 
-The keeper is rendered from a moving mesh into a depth buffer of ASCII characters. The brim hides the face, the katana passes around the body, and stitches follow the robe as it moves. The chapel uses different glyph patterns for slate, stone, foliage and light. The first gameplay input starts an original looping score. Footsteps follow the keeper’s stride, with a sharper tap on paving and softer scuffs in the garden.
+The keeper is rendered from a moving mesh into a depth buffer of ASCII characters. Indigo robe panels carry wave-pattern embroidery, stitched cuffs and a braided belt. The lacquered scabbard hangs below the cord. Both hands come together during a cut. Hits follow the path of the blade, and its edge leaves a short ribbon through the air.
 
-The chapel setting and wide-hatted figure were inspired by the ASCII game clip supplied as a visual reference. The game code, artwork, score, and gameplay recordings in this repository were created for Cinder Vigil.
+## Audio
+
+The first gameplay input starts the original score. Left and right footfalls use separate recordings, with three variations per foot on each surface. Each blade pass and the dash has its own air sound. Use **M** to mute the mix.
+
+- Step recordings by Fantozzi, edited and level-matched for the game. [Fantozzi's Footsteps (CC0)](https://opengameart.org/content/fantozzis-footsteps-grasssand-stone)
+- Bamboo swishes recorded by qubodup, edited for the three cuts and layered for the dash. [Swish (CC0)](https://opengameart.org/content/swish-bamboo-stick-weapon-swhoshes)
