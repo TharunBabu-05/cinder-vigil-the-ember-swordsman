@@ -10,6 +10,16 @@
 .footer-tools{display:flex;align-items:center;gap:clamp(6px,1.4vw,18px);margin-inline-start:auto;flex:none}
 .player-badge{display:flex;align-items:center;gap:7px;white-space:nowrap;padding:4px 7px;border:1px solid #514636;border-radius:3px;color:#cfbea5;font-size:10px}
 .player-badge[hidden]{display:none}
+.watch-orders{display:grid;grid-template-columns:1fr 1fr;gap:24px;padding:18px 24px;background:#191b19;border-bottom:1px solid var(--line)}
+.watch-orders small{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#c3a178}
+.watch-orders h3{margin:5px 0;font:normal 22px Georgia,serif;color:#f0e4cf}
+.watch-orders p{margin:0;color:#c7c3ba;font:14px/1.5 system-ui,sans-serif}
+.watch-orders button{padding:5px 0;margin-top:4px;color:#e7bf8a;font-size:12px;text-decoration:underline;text-underline-offset:3px}
+@media(max-width:600px){.watch-orders{grid-template-columns:1fr;gap:14px;padding:14px 16px}}
+.homecoming #overlay{place-items:end center;background:linear-gradient(0deg,#08090cf5 0%,#080a0dc9 26%,transparent 68%)}
+.homecoming .panel{max-width:480px;padding:12px 24px clamp(12px,4vh,38px)}
+.homecoming .ornament{display:none}
+.homecoming :is(.objective,.stance,.vitals,.map-tag,#touch,#message){visibility:hidden}
 .player-badge strong{min-width:1em;text-align:right;color:#f0d4a2;font-variant-numeric:tabular-nums}
 @media(max-width:500px){footer .keys span:nth-child(n+3){display:none}}
 @media(max-width:370px){footer .keys span:nth-child(2){display:none}}

@@ -1,6 +1,6 @@
 # Cinder Vigil — The Ember Swordsman
 
-A lone swordsman keeps watch at Reedwater Ferry. Three fires have gone dark. Leave the lantern gatehouse, kindle the fires in the cedar grove, dyers' market and kiln terrace, then return to sound the hanging gong.
+A lone swordsman keeps watch at Reedwater Ferry. Three fires have gone dark, and the last ferry is caught on the shoal. Relight the fires, answer the pilot’s call and guide the kiln workers home before dawn.
 
 A **cinder** is a piece of fuel still glowing after a fire burns down. A **vigil** is a watch kept through the night. *Cinder Vigil* names the watch. *The Ember Swordsman* names the keeper you play.
 
@@ -39,7 +39,7 @@ These GIFs were captured from the playable game. Open **Field guide** in the hea
 | Crescent slash | Left-click to aim, or Space to strike in the facing direction | Tap Strike |
 | Crossing lunge | Double-click, or press Space twice | Double-tap Strike |
 | Dash | Shift with a direction, or Shift to dash forward | Dash with the pad, or Dash alone |
-| Kindle a fire or sound the gong | E near the target | Use |
+| Use a fire, landmark or quest item | E near the target | Use |
 | Camera | C to cycle, mouse wheel or + / − to fine-tune | Zoom |
 | Music and sound | M or the sound button | Sound button |
 | Pause and resume | Esc or the pause button | Pause / Resume |
@@ -47,7 +47,22 @@ These GIFs were captured from the playable game. Open **Field guide** in the hea
 
 ## The night watch
 
-Each watchfire wakes a shade. Follow the bearing below the objective, and watch the dash meter for your next burst. The river separates the market and grove from the kiln terrace. Cross at either timber footbridge. When all three fires burn, return to the bronze gong in the ferry gatehouse.
+Each watchfire wakes a shade. Follow the bearing below the objective through the court openings and over the timber footbridges. When all three fires burn, return to the bronze gong in the gatehouse. Ringing it restores vitality and begins the second chapter.
+
+### The last ferry
+
+Salvage a brass crank pin from the wreck at **Salt Quay**. Carry it over the eastern footbridge to open the **East Sluice**, then follow the shell road to **Beacon Headland**. Call the bell warden, survive its toll and light the pilot’s beacon. Completed duties become checkpoints for the current watch. Refreshing the page starts a fresh watch.
+
+The pilot also left a sealed letter in the gatehouse court. Take it to the **pilots’ shrine** on the shell road to restore vitality and gain a fourth heart. Open **Field guide** and choose **Follow letter** to put the errand on the compass. You can switch back to your main duty at any time.
+
+| Enemy | What to watch for |
+| --- | --- |
+| Watchfire shade | Closes steadily after a fire is lit. One cut disperses it. |
+| Reed stalker | Marks its rush in ochre. Sidestep the line and strike during its recovery. |
+| Lantern moth | Holds away from the blade and aims a blue spark. Cross its line of fire to close the distance. |
+| Bell warden | Sends a ring out from its feet. Dash through the wave and land cuts between tolls. |
+
+![The keeper dashes through the bell warden’s toll at the foot of the pilot’s beacon](media/warden.gif)
 
 The keeper is rendered from a moving mesh into a depth buffer of ASCII characters. Indigo robe panels carry wave-pattern embroidery, stitched cuffs and a braided belt. The lacquered scabbard hangs below the cord. Both hands come together during a cut. Hits follow the path of the blade, and its edge leaves a short ribbon through the air.
 

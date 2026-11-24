@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b0d11">
 <title>Cinder Vigil &middot; The Ember Swordsman</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=last-ferry">
 </head>
 <body>
 <main id="game">
@@ -14,8 +14,8 @@
   <div class="location"><i></i> Reedwater Ferry <i></i></div>
   <div class="actions"><button id="openGuide" aria-haspopup="dialog">Field guide</button><button id="sound" aria-label="Enable sound" title="Toggle sound (M)" aria-pressed="false">Sound off</button><button id="pause" aria-label="Pause game" title="Pause (Esc)">Ⅱ</button></div>
 </header>
-<section id="view" aria-label="Ferry grounds">
-  <canvas id="world" tabindex="0" aria-label="Playable ASCII ferry courtyard. Move with WASD or arrow keys, dash with Shift, left-click for a slash or double-click for a crossing lunge, and interact with E."></canvas>
+<section id="view" aria-label="Reedwater and Beacon Headland">
+  <canvas id="world" tabindex="0" aria-label="Playable ASCII ferry district. Move with WASD or arrow keys, dash with Shift, left-click for a slash or double-click for a crossing lunge, and interact with E."></canvas>
   <div class="objective"><div class="chapter"><span class="diamond"></span><span id="chapter">The night watch</span></div><h2 id="mission">Kindle the watchfires</h2><div class="progress"><span id="seals" aria-hidden="true">◇ ◇ ◇</span><span id="count">0 / 3 lit</span></div><small id="bearing" aria-label="Nearest destination"></small></div>
   <div class="stance"><span id="moveName">On watch</span><div class="dash-meter"><i id="dashFill"></i></div><small id="dashLabel">Dash ready</small></div>
   <div id="message" role="status"></div><div id="interaction"></div>
@@ -37,6 +37,10 @@
 </main>
 <dialog id="guide" aria-labelledby="guideTitle">
   <header class="guide-head"><div><small>Reedwater Ferry</small><h2 id="guideTitle">Field guide</h2></div><button id="closeGuide" autofocus>Return to game <kbd>Esc</kbd></button></header>
+  <section class="watch-orders" aria-label="Watch journal">
+    <div><small>Current duty</small><h3 id="orderTitle"></h3><p id="orderCopy"></p></div>
+    <div><small>Optional errand</small><h3>The pilot’s letter</h3><p id="letterCopy"></p><button id="trackLetter" aria-pressed="false">Follow letter</button></div>
+  </section>
   <div class="guide-layout">
     <nav id="techniques" aria-label="Recorded gameplay"></nav>
     <section class="demonstration" aria-label="Selected demonstration">
@@ -44,10 +48,15 @@
       <div class="demo-info"><small id="demoKey"></small><h3 id="demoName"></h3><p id="demoCopy"></p></div>
     </section>
   </div>
-  <details class="reference"><summary>Quest, sound &amp; all controls</summary>
-    <p>Find the three amber diamonds. Kindle each watchfire, drive off the shades, then return to the ferry gate and sound the gong. You start with three vitality.</p>
-    <dl><dt>Move</dt><dd>WASD, arrows or touch pad</dd><dt>Slash / crossing lunge</dt><dd>Click / double-click. Space or the touch Strike button also accepts one or two presses.</dd><dt>Dash</dt><dd>Shift or Dash on touch</dd><dt>Use a fire or gong</dt><dd>E or Use on touch</dd><dt>Camera</dt><dd>C, Zoom, mouse wheel or + / &minus;</dd><dt>Music &amp; footsteps</dt><dd>M or the sound button. Recorded footsteps change between paving and earth. Blade swishes and the dash share this switch.</dd><dt>Pause / resume</dt><dd>Esc or the pause button</dd></dl>
+  <details class="reference"><summary>Creatures of the night watch</summary>
+    <dl><dt>Watchfire shade</dt><dd>A drifting mask drawn to a newly lit fire. One clean cut scatters it.</dd><dt>Reed stalker</dt><dd>Look for the ochre line along the ground. Step aside as it rushes, then catch it on the recovery.</dd><dt>Lantern moth</dt><dd>Its wings flash blue and a dotted line marks its aim. Move across the line as the spark leaves its wings.</dd><dt>Bell warden</dt><dd>Its crown glows before each toll. Dash through the expanding ring and land a crossing lunge before the next toll.</dd></dl>
+  </details>
+  <details class="reference"><summary>Sound &amp; all controls</summary>
+    <dl><dt>Move</dt><dd>WASD, arrows or touch pad</dd><dt>Slash / crossing lunge</dt><dd>Click / double-click. Space or the touch Strike button also accepts one or two presses.</dd><dt>Dash</dt><dd>Shift or Dash on touch</dd><dt>Use a landmark or item</dt><dd>E or Use on touch</dd><dt>Camera</dt><dd>C, Zoom, mouse wheel or + / &minus;</dd><dt>Music &amp; footsteps</dt><dd>M or the sound button. Recorded footsteps change between paving and earth. Blade swishes and the dash share this switch.</dd><dt>Pause / resume</dt><dd>Esc or the pause button</dd></dl>
   </details>
 </dialog>
-<audio id="score" src="ashmere.ogg" preload="auto" loop></audio><script src="keeper.js"></script><script src="art.js"></script><script src="guide.js"></script><script src="players.js"></script><script src="game.js"></script>
+<audio id="score" src="ashmere.ogg" preload="auto" loop></audio>
+<script src="keeper.js"></script><script src="art.js?v=last-ferry"></script>
+<script src="reach.js"></script><script src="shades.js"></script><script src="guide.js?v=last-ferry"></script>
+<script src="players.js"></script><script src="game.js?v=last-ferry"></script>
 </body></html>

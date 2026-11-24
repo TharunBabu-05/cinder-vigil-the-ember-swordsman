@@ -2,6 +2,7 @@
   'use strict';
   const $=id=>document.getElementById(id),world=$('world'),ctx=world.getContext('2d',{alpha:false}),view=$('view');
   const {project}=Art,rand=Art.random(782),tau=Math.PI*2;
+  const coarsePointer=matchMedia('(pointer:coarse)');
   const ground=Art.ground(),gatehouse=Art.gatehouse(),meadow=Art.meadow(),bowl=Art.brazier();
   const trees=[Art.tree(55,112),Art.tree(22,88),Art.tree(87,158)],stones=[1,2,3].map(Art.stone);
   const props=[],obstacles=[],rails=[],flames=[
@@ -14,6 +15,7 @@
     const y=Art.riverY(start);water.push({point:project(start,y),sprite:Art.riverSection(start)});
   }
   const crossing=Art.bridge();
+  const ferryBoat=Art.ferry();
   const stalls=['#9d655a','#546c81','#b18a56'].map(Art.stall),furnace=Art.kiln();
   for(const [i,x] of [600,700,800,900].entries()){
     post(x,54,stalls[i%3]);obstacles.push([x,48,29]);
@@ -50,12 +52,14 @@
     for(let i=0;i<segments;i++)post(start+i*len,187,sprite,'rail');
   }
   flames.forEach((f,index)=>{post(f.x,f.y,bowl,'fire'+index);obstacles.push([f.x,f.y,8]);});
+  Reach.scenery(post,obstacles);
   const motes=Array.from({length:65},()=>({x:rand()*1260-610,y:rand()*530-130,z:rand()*48,phase:rand()*tau}));
   let width=0,height=0,dpr=1,fit=1,mode='play',muted=true,audio=null,t=0,last=0,elapsed=0;
   let player,keys=new Set(),wisps=[],sparks=[],paths=[],zoom=1,wantedZoom=1,camX=0,camY=0,shake=0,active=null;
   const duration={slash:.65,counter:.86};
   let swordTrail=[],lastPress=-Infinity;
   let intro=true,echoes=[],nextEcho=0,soundChosen=false;
+  let stage=-1,letter=0,trackLetter=false,bolts=[],swingNumber=0,arrival=0;
   const score=$('score');score.volume=.65;
   let flashUntil=0,noticeTime=0,initialized=false;
   function resize(){
@@ -64,18 +68,46 @@
     fit=Math.max(.59,Math.min(width/995,height/665));ctx.imageSmoothingEnabled=true;
     if(initialized)render();
   }
+  function spawnShade(kind,x,y,roams=false){
+    const w=Shades.create(kind,...project(x,y),rand()*tau,roams);
+    wisps.push(w);return w;
+  }
   function reset(){
-    player={x:5,y:101,angle:-.65,walk:0,moving:false,hp:3,attack:0,cooldown:0,form:"slash",queued:false,stepCount:0,invuln:0,dashTime:0,dashCooldown:0,dashX:0,dashY:0,pose:0,cloth:Keeper.motion()};
-    for(const f of flames)f.lit=false;
-    wisps=[];sparks=[];paths=[];keys.clear();elapsed=0;mode='play';shake=0;active=null;noticeTime=0;
+    const checkpoint=mode==='lost'&&stage>=0;
+    const spawn=checkpoint?[door,Reach.wreck,Reach.sluice,Reach.beacon,Reach.beacon][stage]:null;
+    if(!checkpoint){stage=-1;letter=0;trackLetter=false;}
+    if(stage===3)stage=2;
+    player={x:spawn?spawn.x:5,y:spawn?spawn.y+32:101,angle:-.65,walk:0,moving:false,hp:letter===2?4:3,attack:0,cooldown:0,form:"slash",queued:false,stepCount:0,invuln:0,dashTime:0,dashCooldown:0,dashX:0,dashY:0,pose:0,cloth:Keeper.motion()};
+    for(const f of flames)f.lit=checkpoint;
+    wisps=[];bolts=[];sparks=[];paths=[];keys.clear();elapsed=0;arrival=0;mode='play';shake=0;active=null;noticeTime=0;
+    view.classList.remove('homecoming');
+    for(const [kind,x,y] of Reach.patrols)spawnShade(kind,x,y,true);
     swordTrail=[];lastPress=-Infinity;echoes=[];nextEcho=0;intro=true;syncMusic();wantedZoom=zoom=1;const [x,y]=project(player.x,player.y);camX=x+30;camY=y-117;
     $('overlay').hidden=true;$('message').textContent='';$('interaction').textContent='';updateHud();world.focus({preventScroll:true});
+    if(checkpoint)notify('Back on watch. '+Reach.orders[stage].title+'.');
   }
   function updateHud(){
     const n=flames.filter(f=>f.lit).length;
-    $('seals').textContent=flames.map(f=>f.lit?'◆':'◇').join(' ');$('count').textContent=n+' / 3 lit';
-    $('mission').textContent=n===3?'Sound the gatehouse gong':'Kindle the watchfires';
-    $('health').textContent='◆ '.repeat(player.hp)+'◇ '.repeat(3-player.hp);$('health').setAttribute('aria-label',player.hp+' vitality');
+    const duties=[stage>=1,stage>=2,stage>=4,mode==='won'];
+    const checks=stage<0?flames.map(f=>f.lit):duties;
+    let order=Reach.orders[stage];
+    if(stage<0)order={
+      title:n===3?'Sound the gatehouse gong':'Kindle the watchfires',
+      entry:'The cedar cutters, dyers and kiln workers each kept a fire for the ferry. Kindle all three, then ring the gong to hear from the far bank.'
+    };
+    if(mode==='won')order={title:'The ferry is home',entry:'The workers have reached Salt Quay. Your watch is complete.'};
+    $('seals').textContent=checks.map(done=>done?'◆':'◇').join(' ');
+    $('count').textContent=stage<0?n+' / 3 lit':duties.filter(Boolean).length+' / 4 duties';
+    $('chapter').textContent=stage<0?'The night watch':'The last ferry';
+    $('mission').textContent=order.title;
+    $('health').textContent='◆ '.repeat(player.hp)+'◇ '.repeat((letter===2?4:3)-player.hp);$('health').setAttribute('aria-label',player.hp+' vitality');
+    $('orderTitle').textContent=order.title;$('orderCopy').textContent=order.entry;
+    $('letterCopy').textContent=['A sealed dispatch was left on the east side of the gatehouse court. Take it to the pilots’ roadside shrine for an extra point of vitality.',
+      'The seal bears a little heron. Carry the letter up the shell road to the pilots’ shrine.',
+      'Letter delivered. Four lamps now burn for the night watch. Your maximum vitality is four.'][letter];
+    $('trackLetter').hidden=letter===2||mode==='won';
+    $('trackLetter').textContent=trackLetter?'Follow main duty':'Follow letter';
+    $('trackLetter').setAttribute('aria-pressed',String(trackLetter));
   }
   function notify(msg){$('message').textContent=msg;noticeTime=3.6;$('message').style.opacity='1';}
   function tone(freq,duration,volume=.09,type='sine',delay=0,end=freq){
@@ -145,9 +177,9 @@
   }
   function modal(state){
     mode=state;syncMusic();clearInput();$('overlay').hidden=false;$('interaction').textContent='';
-    const content={pause:['Watch paused','Three watchfires guard Reedwater. Follow the amber diamonds and kindle each fire, then return to the ferry gate.','Resume watch'],
-      lost:['The vigil fades','The shades have taken the yard. The ferry gate waits for another watch.','Try again'],
-      won:['The gong answers','The three watchfires burn. As the gong sounds over Reedwater, the last of the shades slip into the trees.','Keep another vigil']}[state];
+    const content={pause:['Watch paused',$('orderCopy').textContent,'Resume watch'],
+      lost:['The vigil fades',stage>=0?'The ferryman keeps your place. Return to the last duty with your vitality restored.':'The shades have taken the yard. The ferry gate waits for another watch.',stage>=0?'Return to checkpoint':'Try again'],
+      won:['The last ferry comes home','The pilot sees the beacon. A hull parts the reeds below Salt Quay, and the ferryman brings the last kiln workers home before dawn.','Keep another vigil']}[state];
     [$('overlayTitle').textContent,$('overlayCopy').textContent,$('resume').textContent]=content;$('resume').focus({preventScroll:true});
   }
   function unpause(){mode='play';syncMusic();$('overlay').hidden=true;world.focus({preventScroll:true});}
@@ -157,26 +189,57 @@
     for(let i=0;i<n;i++)sparks.push({x:sx,y:sy,dx:(rand()-.5)*36,dy:-9-rand()*28,life:.3+rand()*.7,color,glyph:rand()<.5?'+':'*'});
   }
   const door={x:Art.doorX,y:22,name:'Gatehouse gong'};
+  function letterSite(){return letter===0?Reach.bag:Reach.shrine;}
+  function dutySites(){
+    if(stage>=0)return [Reach.orders[stage].site];
+    const unlit=flames.filter(f=>!f.lit);return unlit.length?unlit:[door];
+  }
+  function actionFor(target){
+    if(target===door)return 'Sound the gatehouse gong';
+    if(target===Reach.beacon&&stage>=3)return stage===3?'Drive off the bell warden':'Light the pilot’s beacon';
+    return target.action||'Kindle '+target.name.toLowerCase();
+  }
   function nearTarget(){
-    const possible=[...flames.filter(f=>!f.lit),door];
+    const possible=dutySites();
+    if(stage<0&&!possible.includes(door))possible.push(door);
+    if(letter<2)possible.push(letterSite());
     return possible.find(o=>Math.hypot(player.x-o.x,player.y-o.y)<(o===door?43:40))||null;
   }
   function use(){
     if(mode!=='play')return;
     window.playerCount?.recordPlay();
     const target=nearTarget(),n=flames.filter(f=>f.lit).length;
-    if(!target){notify(n===3?'Return to the ferry gate.':'Approach a watchfire marked with a diamond.');return;}
+    if(!target){notify(trackLetter?'Follow the bearing to the '+letterSite().name.toLowerCase()+'.':$('mission').textContent+'. Follow the bearing.');return;}
+    if(target===Reach.bag||target===Reach.shrine){
+      letter++;
+      if(letter===2){player.hp=4;trackLetter=false;bell(392);}
+      notify(letter===1?'A pilot’s letter. The pilots’ shrine stands on the shell road.':'The shrine lamps catch. Your vitality is restored and raised to four.');
+      updateHud();return;
+    }
     if(target===door){
       if(n<3){notify('The gong waits for all three watchfires.');return;}
-      bell(146.8);tone(220,3,.11,'sine',.6);wisps=[];modal('won');return;
+      bell(146.8);tone(220,3,.11,'sine',.6);wisps=wisps.filter(w=>w.roams);
+      stage=0;player.hp=letter===2?4:3;updateHud();
+      notify('A pilot answers the gong. “We’re aground! Find the crank pin at Salt Quay.”');return;
+    }
+    if(stage>=0){
+      if(stage===3){notify(Reach.orders[3].entry);return;}
+      burst(target.x,target.y,24,24,'#f0c993');bell(stage===4?196:330);
+      if(stage===4){
+        modal('won');updateHud();view.classList.add('homecoming');
+        arrival=matchMedia('(prefers-reduced-motion: reduce)').matches?1:0;
+        showArrival();return;
+      }
+      if(stage===2)spawnShade('warden',target.x+55,target.y+48,true);
+      stage++;updateHud();
+      notify(['','Brass pin recovered. Take it across the eastern footbridge.','Water runs through the sluice. The ferry needs a light on the headland.','The bell warden rises. Dash through the ring when it reaches you.'][stage]);return;
     }
     target.lit=true;burst(target.x,target.y,20,32,'#edae60');bell([261.6,329.6,392][n]);updateHud();
     notify(n===2?'All fires are lit. Return to the gatehouse gong.':'A shade stirs. Strike with Space to drive it off.');
-    const [sx,sy]=project(target.x+(target.x>300?-80:100),target.y+75);
-    wisps.push({x:sx,y:sy,phase:rand()*tau,spawn:1.1});
+    spawnShade('shade',target.x+(target.x>300?-80:100),target.y+75);
   }
   function blocked(x,y){
-    if(x< -1010||x>1000||y<17||y>690)return true;
+    if(x< -1010||x>1390||y<17||y>1050)return true;
     if(Math.abs(y-187)<5&&rails.some(([a,b])=>x>a-3&&x<b+3))return true;
     if(Math.abs(y-Art.riverY(x))<38 && !Art.bridgeXs.some(b=>Math.abs(x-b)<21))return true;
     return obstacles.some(([ox,oy,r])=>(x-ox)**2+(y-oy)**2<r*r);
@@ -220,7 +283,7 @@
     if(player.cooldown>0)return;
     window.playerCount?.recordPlay();
     if(typeof angle==='number')player.angle=angle;
-    lastPress=now;player.form='slash';player.attack=duration.slash;
+    lastPress=now;swingNumber++;player.form='slash';player.attack=duration.slash;
     player.queued=false;swordTrail=[];
   }
   function sweepBlade(oldPhase,phase,from,to){
@@ -229,6 +292,7 @@
       if(oldPhase<start&&phase>=start)sample(sound,combo?.90:.84,.96+rand()*.08);
       const lo=Math.max(start,oldPhase),hi=Math.min(end,phase);
       if(lo>=hi)continue;
+      const stroke=swingNumber*3+(combo?(sound==='return'?1:2):0);
       // Sample the moving blade along the arc, even between rendered frames.
       const steps=Math.max(1,Math.ceil((hi-lo)*85));
       for(let j=0;j<=steps;j++){
@@ -237,7 +301,7 @@
         const {guard,tip}=Keeper.edgePath(player.angle,at,player.form);
         const gx=x+guard[0],gy=y+guard[1],dx=tip[0]-guard[0],dy=tip[1]-guard[1],len=dx*dx+dy*dy;
         for(let i=wisps.length-1;i>=0;i--){
-          const w=wisps[i];if(Math.hypot(w.x-x,w.y-y)>73)continue;
+          const w=wisps[i];if(w.hitStroke===stroke||Math.hypot(w.x-x,w.y-y)>73)continue;
           const hits=[5,14,23].some(h=>{
             const px=w.x-gx,py=w.y-h-gy;
             const k=Math.max(0,Math.min(1,(px*dx+py*dy)/(len||1)));
@@ -245,13 +309,45 @@
           });
           if(!hits)continue;
           for(let k=0;k<22;k++)sparks.push({x:w.x,y:w.y-14,dx:(rand()-.5)*63,dy:(rand()-.65)*47,life:.3+rand()*.5,color:'#f4cd9e',glyph:'+'});
-          wisps.splice(i,1);shake=2.2;tone(94,.19,.055,'triangle',0,37);
+          w.hitStroke=stroke;w.hp--;w.flash=.16;shake=2.2;tone(94,.19,.055,'triangle',0,37);
+          if(w.hp===0){
+            wisps.splice(i,1);
+            if(w.kind==='warden'){stage=4;bell(261.6);updateHud();notify('The bell falls silent. Light the beacon for the pilot.');}
+          }
         }
         if(j>0)swordTrail.push({x:gx+dx,y:gy+dy,gx,gy,life:.165,stroke:start});
       }
     }
   }
   function cycleZoom(){intro=false;const levels=[1,2.7,6.6,8];wantedZoom=levels.find(v=>v>wantedZoom+.12)||1;}
+  function hurt(source){
+    if(player.invuln>0||mode!=='play')return false;
+    player.hp--;player.invuln=1.9;shake=4;flashUntil=t+.16;updateHud();tone(90,.4,.12,'triangle',0,36);
+    if(!player.hp)modal('lost');else notify(source+' struck. Dash clear or answer with a cut.');
+    return true;
+  }
+  function nextWaypoint(target){
+    const {x,y}=player,bank=Art.riverY(x);
+    let point=target;
+    if((y-bank)*(target.y-Art.riverY(target.x))<0){
+      const cost=bx=>Math.hypot(x-bx,y-Art.riverY(bx))+Math.hypot(target.x-bx,target.y-Art.riverY(bx));
+      const bx=Art.bridgeXs.reduce((a,b)=>cost(a)<cost(b)?a:b);
+      const side=Math.sign(y-bank);
+      point={x:bx,y:Art.riverY(bx)+(Math.abs(x-bx)<15?-side:side)*52,name:'Footbridge'};
+    }else if(Math.abs(y-bank)<38&&Math.abs(target.y-bank)>42){
+      const bx=Art.bridgeXs.find(b=>Math.abs(x-b)<21);
+      if(bx!==undefined)point={x:bx,y:Art.riverY(bx)+Math.sign(target.y-bank)*52,name:'Footbridge'};
+    }
+    if((y-187)*(point.y-187)<0){
+      const crossX=x+(point.x-x)*(187-y)/(point.y-y);
+      if(rails.some(([a,b])=>crossX>a-4&&crossX<b+4)){
+        const cost=g=>Math.hypot(x-g,y-187)+Math.hypot(point.x-g,point.y-187);
+        const g=[-600,-29,345,595].reduce((a,b)=>cost(a)<cost(b)?a:b);
+        return {x:g,y:187+(Math.abs(x-g)<15?-1:1)*Math.sign(y-187)*12,name:'Court opening'};
+      }
+    }
+    return point;
+  }
   function update(dt){
     t+=dt;elapsed+=dt;player.moving=false;player.cooldown=Math.max(0,player.cooldown-dt);player.invuln=Math.max(0,player.invuln-dt);
     if(intro&&elapsed>3.5){wantedZoom=2.7;intro=false;}
@@ -306,16 +402,18 @@
       if(rand()<.45)burst(player.x,player.y,20,1,'#c18958');
     }
     for(const w of wisps){
-      w.spawn=Math.max(0,w.spawn-dt);
-      if(w.spawn>0)continue;
-      const dx=p[0]-w.x,dy=p[1]-w.y,dist=Math.hypot(dx,dy);
-      if(dist>0){const speed=22;w.x+=dx/dist*speed*dt;w.y+=dy/dist*speed*dt;}
-      if(dist<10&&player.invuln<=0){
-        player.hp--;player.invuln=1.9;shake=4;flashUntil=t+.16;updateHud();tone(90,.4,.12,'triangle',0,36);
-        w.x-=dx/(dist||1)*34;w.y-=dy/(dist||1)*34;
-        if(!player.hp){modal('lost');return;}notify('The shade struck. Face it and press Space.');
-      }
+      const attack=Shades.update(w,dt,t,p,bolts,hurt);
+      if(attack==='warden')bell(82.4);
+      if(attack==='moth')tone(790,.22,.048,'sine',0,390);
+      if(attack==='stalker')sample('dash',.28,1.44);
+      if(mode==='lost')return;
     }
+    for(const bolt of bolts){
+      bolt.life-=dt;bolt.x+=bolt.vx*dt;bolt.y+=bolt.vy*dt;
+      if(Math.hypot(bolt.x-p[0],bolt.y-p[1])<9){bolt.life=0;hurt('Lantern moth');}
+    }
+    bolts=bolts.filter(b=>b.life>0);
+    if(mode==='lost')return;
     for(const s of sparks){s.x+=s.dx*dt;s.y+=s.dy*dt;s.dy+=12*dt;s.life-=dt;}sparks=sparks.filter(s=>s.life>0);
     for(const s of paths)s.life-=dt;paths=paths.filter(s=>s.life>0);
     const tracking=1-Math.exp(-dt*6.5);zoom+=(wantedZoom-zoom)*tracking;
@@ -328,20 +426,16 @@
     const dashStatus=player.dashCooldown>0?'Recovering':'Dash ready';
     if($('dashLabel').textContent!==dashStatus)$('dashLabel').textContent=dashStatus;
     active=nearTarget();
-    const prompt=active?(active===door?'[ E ]  Sound the gatehouse gong':'[ E ]  Kindle '+active.name.toLowerCase()):'';
+    const prompt=active&&!(stage===3&&active===Reach.beacon)?(coarsePointer.matches?'[ Use ]  ':'[ E ]  ')+actionFor(active):'';
     if($('interaction').textContent!==prompt)$('interaction').textContent=prompt;
     const bank=Art.riverY(player.x);
-    const area=Math.abs(player.y-bank)<55?'Reedwater crossing':player.y>bank?'Kiln terrace':player.x>570?'Dyers market':player.x< -560?'Cedar grove':player.y>190?'River meadow':'Lantern court';
-    const goals=flames.some(f=>!f.lit)?flames.filter(f=>!f.lit):[door];
+    const area=Reach.area(player.x,player.y)||(Math.abs(player.y-bank)<55?'Reedwater crossing':player.y>bank?'Kiln terrace':player.x>570?'Dyers market':player.x< -560?'Cedar grove':player.y>190?'River meadow':'Lantern court');
+    const goals=trackLetter?[letterSite()]:dutySites();
     const target=goals.reduce((a,b)=>Math.hypot(player.x-a.x,player.y-a.y)<Math.hypot(player.x-b.x,player.y-b.y)?a:b);
-    let waypoint=target,label=target.name;
-    if((player.y-bank)*(target.y-Art.riverY(target.x))<0 && !Art.bridgeXs.some(x=>Math.abs(x-player.x)<21)){
-      const x=Art.bridgeXs.reduce((a,b)=>Math.abs(player.x-a)+Math.abs(target.x-a)<Math.abs(player.x-b)+Math.abs(target.x-b)?a:b);
-      waypoint={x,y:Art.riverY(x)+(player.y<bank?-52:52)};label='Footbridge';
-    }
+    const waypoint=nextWaypoint(target);
     const [dx,dy]=project(waypoint.x-player.x,waypoint.y-player.y);
     const arrow=['E','SE','S','SW','W','NW','N','NE'][(Math.round(Math.atan2(dy,dx)/(Math.PI/4))+8)%8];
-    const bearing=label+' / '+arrow;
+    const bearing=(trackLetter?'Letter · ':'')+waypoint.name+' / '+arrow;
     if($('bearing').textContent!==bearing)$('bearing').textContent=bearing;
     if($('area').textContent!==area)$('area').textContent=area;
     noticeTime=Math.max(0,noticeTime-dt);if(noticeTime<.45)$('message').style.opacity=String(noticeTime/.45);
@@ -369,15 +463,6 @@
       const ph=(t*(.8+i%3*.08)+i*.137)%1,dx=Math.sin(i*14+ph*4)*(1-ph)*7+Math.sin(ph*4+i)*1.3;
       glyph(ctx,i%3===0?'*':i%3===1?'+':':',x+dx,y-18-ph*20,ph>.7?'#d67a48':i%2?'#ffc780':'#ffe2aa',3+3*(1-ph));
     }
-  }
-  function shade(w){
-    const bob=Math.sin(t*3+w.phase)*2;ctx.save();ctx.translate(w.x,w.y-13+bob);ctx.globalAlpha=w.spawn>0?.45+.4*Math.sin(t*10):1;
-    glow(0,-2,16,'#ad7a85',.18);
-    for(let i=0;i<42;i++){
-      const a=i*2.39996,rad=Math.sqrt(i/42),x=Math.cos(a)*rad*7,y=Math.sin(a)*rad*10;
-      glyph(ctx,';:/i+'[i%5],x+Math.sin(t*4+i*.3),y,i%3?'#827c8b':'#baa6ad',3.7);
-    }
-    glyph(ctx,'=',-3,-2,'#ffc178',5);ctx.restore();
   }
   function keeperSprite(){
     const swing=player.attack>0?1-player.attack/duration[player.form]:0;
@@ -422,6 +507,7 @@
       const [x,y]=w.point;
       if(x>minX-280&&x<maxX+80&&y>minY-130&&y<maxY+65)Art.draw(g,w.sprite,x,y);
     }
+    Reach.terrain(g,minX,minY,maxX,maxY);
     for(const bx of Art.bridgeXs)Art.draw(g,crossing,...project(bx,Art.riverY(bx)));
     for(const q of props){
       if(q.type!=='woods')continue;
@@ -446,6 +532,15 @@
     }
     ctx.drawImage(backdrop,stored.x,stored.y,backdrop.width/pixels,backdrop.height/pixels);
   }
+  function ferryPosition(){
+    const travel=arrival*arrival*(3-2*arrival),x=1360-travel*132;
+    return [x,Art.riverY(x)+4-travel*31];
+  }
+  function showArrival(){
+    const [x,y]=project(...ferryPosition());
+    zoom=wantedZoom=1.85;camX=x;camY=y+height/(fit*zoom)*.14;
+    render();
+  }
   function render(){
     const s=fit*zoom,ox=width*.5-camX*s+(shake?Math.sin(t*89)*shake:0),oy=height*.5-camY*s+(shake?Math.cos(t*99)*shake:0);
     ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#0b0e12';ctx.fillRect(0,0,width,height);
@@ -464,18 +559,44 @@
     ctx.globalAlpha=.77;ctx.drawImage(figure.shadow,figure.left,figure.top,figure.w,figure.h);ctx.restore();
     for(const p of paths){ctx.globalAlpha=Math.min(1,p.life)*.55;glyph(ctx,'.',p.x,p.y,'#e0b08a',4);}ctx.globalAlpha=1;
     const visible=[];
+    const boat=ferryPosition(),[boatX,boatY]=project(...boat);
+    if(boatX>minX-70&&boatX<maxX+70&&boatY>minY-30&&boatY<maxY+70){
+      visible.push({depth:boat[1],paint:()=>{
+        const bob=stage>=2?Math.sin(t*2.5)*1.1:0;
+        Art.draw(ctx,ferryBoat,boatX,boatY+bob);
+        glow(boatX+35,boatY-18+bob,13,'#ffac69',.3);
+      }});
+    }
     for(const q of props){
-      if(q.type==='woods')continue;
+      if(q.type==='woods'||(q.type==='bag'&&letter!==0))continue;
       const [x,y]=project(q.x,q.y),sp=q.sprite;
       if(x+sp.left+sp.w<minX||x+sp.left>maxX||y+sp.top+sp.h<minY||y+sp.top>maxY)continue;
       // Depth follows the object's baseline at the actor's horizontal position.
       const depth=q.type==='gatehouse'?-100:q.type==='woods'?-600:q.y;
       visible.push({depth,paint:()=>{
-        if(q.type!=='gatehouse')Art.draw(ctx,sp,x,y);
+        if(q.type!=='gatehouse'){
+          const coversKeeper=depth>player.y&&sp.h>58&&px+8>x+sp.left&&px-8<x+sp.left+sp.w&&py-7>y+sp.top&&py-35<y+sp.top+sp.h;
+          if(coversKeeper)ctx.globalAlpha=.37;
+          Art.draw(ctx,sp,x,y);ctx.globalAlpha=1;
+        }
         if(q.type.startsWith('fire'))fire(x,y,Number(q.type.slice(4)));
+        if(q.type==='wreck'&&stage===0)marker(x,y-74);
+        if(q.type==='sluice'){
+          if(stage===1)marker(x,y-75);
+          if(stage>=2)for(let i=0;i<22;i++){
+            const u=(t*.8+i*.137)%1;
+            glyph(ctx,i%3?'~':'+',x+(i%8)*3-11-u*15,y+2+u*15,'#a6ccbf',3.8);
+          }
+        }
+        if(q.type==='beacon'){
+          if(stage>=2&&stage!==3)marker(x,y-132);
+          if(mode==='won')glow(x,y-93,48,'#ffe0a4',.85);
+        }
+        if(q.type==='bag'||(q.type==='shrine'&&letter===1))marker(x,y-(q.type==='bag'?23:53));
+        if(q.type==='shrine'&&letter===2)glow(x,y-16,14,'#ffba72',.52);
         if(q.type==='gatehouse'){
           for(const lamp of [-166,-82,82,166]){const [lx,ly]=project(lamp,15,78);glow(lx,ly,19,'#e6a265',.11+.025*Math.sin(t*4+lamp));}
-          if(flames.every(f=>f.lit)){const p=project(door.x,6,107);marker(...p,true);}
+          if(stage<0&&flames.every(f=>f.lit)){const p=project(door.x,6,107);marker(...p,true);}
         }
       }});
     }
@@ -483,8 +604,15 @@
       ctx.globalAlpha=.48*(e.life/.24);Art.draw(ctx,e.sprite,e.x,e.y);ctx.globalAlpha=1;
     }});
     visible.push({depth:player.y,paint:()=>hero(px,py)});
-    for(const w of wisps)visible.push({depth:(w.y-.275*w.x)/(.58+.275*.77),paint:()=>shade(w)});
+    for(const w of wisps){
+      if(w.x<minX-140||w.x>maxX+140||w.y<minY-100||w.y>maxY+100)continue;
+      visible.push({depth:(w.y-.275*w.x)/(.58+.275*.77),paint:()=>Shades.draw(ctx,w,t,glyph,glow)});
+    }
     visible.sort((a,b)=>a.depth-b.depth);for(const q of visible)q.paint();
+    for(const bolt of bolts){
+      glow(bolt.x,bolt.y-12,6,'#aee9de',.4);
+      glyph(ctx,'*',bolt.x-2,bolt.y-10,'#cff8df',6);
+    }
     for(const m of motes){
       const [x,y]=project(m.x,m.y,m.z);
       if(x<minX||x>maxX||y<minY||y>maxY)continue;
@@ -551,6 +679,7 @@
     $('guide').showModal();
   };
   $('closeGuide').onclick=()=>$('guide').close();
+  $('trackLetter').onclick=()=>{trackLetter=!trackLetter;updateHud();};
   $('guide').addEventListener('close',()=>{
     if(guidePaused){unpause();guidePaused=false;}else $('openGuide').focus();
   });
@@ -558,6 +687,9 @@
   function frame(now){
     const dt=last?Math.min((now-last)/1000,.045):0;last=now;
     if(mode==='play'){update(dt);render();}
+    else if(mode==='won'&&arrival<1&&!$('guide').open&&!document.hidden){
+      t+=dt;arrival=Math.min(1,arrival+dt/6);showArrival();
+    }
     initialized=true;requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);

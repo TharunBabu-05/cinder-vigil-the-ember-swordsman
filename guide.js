@@ -5,7 +5,8 @@
     ['yard','Reedwater Ferry','Wide camera','Wheel down or cycle C','The ferry gong hangs below two tiled roofs. Seek the grove and market watchfires, then cross a footbridge to the kiln terrace. The bearing beneath the objective points the way.'],
     ['dash','Shadow step','Dash','Shift + direction','Burst toward a gap or slip past a shade. Fading silhouettes mark the route. The gold meter fills when the next dash is ready.'],
     ['slash','Crescent slash','Single attack','Left click once','Aim with the pointer. The keeper draws the blade up, cuts across the body and returns to guard.'],
-    ['combo','Crossing lunge','Double attack','Left click twice','A quick second press queues a lunging return cut and a descending finish after the opening slash.']
+    ['combo','Crossing lunge','Double attack','Left click twice','A quick second press queues a lunging return cut and a descending finish after the opening slash.'],
+    ['warden','The bell warden','Beacon headland','Shift / double click','The keeper dashes across the warden’s toll at the foot of the beacon. Watch the ring pass before committing to the next cut.']
   ];
   const $=id=>document.getElementById(id),nav=$('techniques');
   function select(index){
